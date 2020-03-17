@@ -22,9 +22,9 @@ import math
 from vanguard.model import Model
 
 try:
-    from warrant.aws_srp import AWSSRP
+    from pycognito.aws_srp import AWSSRP
 except ModuleNotFoundError as e:
-    sys.exit(f"You need warrant to run this script: {e}")
+    sys.exit(f"You need pycognito to run this script: {e}")
 
 try:
     import boto3
@@ -61,7 +61,7 @@ class Client:
             region_name=region,
             config=Config(signature_version=botocore.UNSIGNED),
         )
-        client_id, pool_id = self.cognito_params()
+        client_id, pool_id = self.cognito_params(region)
         aws = AWSSRP(
             username=username,
             password=password,
@@ -168,9 +168,9 @@ class Client:
             if status == 200:
                 return json.loads(data)["response"]
 
-    def cognito_params(self):
+    def cognito_params(self, region):
         url = f"{self.base_url}/bundle.js"
-        pattern = r"{\s*UserPoolId:\s*['\"](eu-central-1[^'\"]+)['\"],\s*ClientId:\s*['\"]([^'\"]+)['\"]\s*}"
+        pattern = fr"{{\s*UserPoolId:\s*['\"]({region}[^'\"]+)['\"],\s*ClientId:\s*['\"]([^'\"]+)['\"]\s*}}"
         with urllib.request.urlopen(url) as response:
             data = response.read().decode("utf-8")
         match = re.search(pattern, data)
