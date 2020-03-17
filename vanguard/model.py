@@ -20,21 +20,27 @@ class Model:
 
     def set_high_value_assets(self, **kwargs):
         instance_ids = kwargs.get("instances", [])
-        applied_instance_ids = []
+        applied_instance_ids = set()
         bucket_ids = kwargs.get("buckets", [])
-        applied_bucket_ids = []
+        applied_bucket_ids = set()
         dbinstance_ids = kwargs.get("dbinstances", [])
-        applied_dbinstance_ids = []
+        applied_dbinstance_ids = set()
         for index, obj in enumerate(self.model["objects"]):
             if obj["metaconcept"] == "EC2Instance":
                 if self.high_value_instance(obj, index, instance_ids):
-                    applied_instance_ids.append(self.get_tag(obj, "aws-id"))
+                    aws_id = self.get_tag(obj, "aws-id")
+                    assert aws_id not in applied_instance_ids
+                    applied_instance_ids.add(aws_id)
             elif obj["metaconcept"] == "DBInstance":
                 if self.high_value_dbinstance(obj, index, dbinstance_ids):
-                    applied_dbinstance_ids.append(obj["name"])
+                    name = obj["name"]
+                    assert name not in applied_dbinstance_ids
+                    applied_dbinstance_ids.add(name)
             elif obj["metaconcept"] == "S3Bucket":
                 if self.high_value_bucket(obj, index, bucket_ids):
-                    applied_bucket_ids.append(obj["name"])
+                    name = obj["name"]
+                    assert name not in applied_bucket_ids
+                    applied_bucket_ids.add(name)
         for instance_id in instance_ids:
             if instance_id not in applied_instance_ids:
                 raise ValueError(f"EC2Instance {instance_id}, can't set consequence")

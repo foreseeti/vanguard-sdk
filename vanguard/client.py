@@ -37,7 +37,7 @@ except ModuleNotFoundError as e:
 class Client:
     def __init__(self, username, password, url, region="eu-central-1"):
         self.base_url = url
-        self.backend_url = "{}/backend"
+        self.backend_url = f"{self.base_url}/backend"
         self.token = self.authenticate(username, password, region)
 
     def simulate(self, model, profile):
