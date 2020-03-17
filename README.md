@@ -51,6 +51,18 @@ results = client.simulate(model, profile=vanguard.Profile.CYBERCRIMINAL)
 print(results)
 
 ```
+
+If you wish to run securiCAD Vanguard with a local file, replace the `client.get_model()` call in the above example with:
+
+```python
+import json
+
+with open('data.json', 'r') as json_file:
+    data = json.load(json_file)
+    model = client.get_model(data=data)
+
+```
+
 The results will be returned as a `dict` with your high value asset identifiers as keys. For example:
 ```json
 {

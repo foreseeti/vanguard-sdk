@@ -20,67 +20,44 @@ class Model:
 
     def set_high_value_assets(self, **kwargs):
         instance_ids = kwargs.get("instances", [])
-        applied_instance_ids = set()
         bucket_ids = kwargs.get("buckets", [])
-        applied_bucket_ids = set()
         dbinstance_ids = kwargs.get("dbinstances", [])
-        applied_dbinstance_ids = set()
+
         for index, obj in enumerate(self.model["objects"]):
             if obj["metaconcept"] == "EC2Instance":
-                if self.high_value_instance(obj, index, instance_ids):
-                    aws_id = self.get_tag(obj, "aws-id")
-                    assert aws_id not in applied_instance_ids
-                    applied_instance_ids.add(aws_id)
+                obj_id = self.get_tag(obj, "aws-id")
+                attackstep = "HighPrivilegeAccess"
+                self.set_high_value_asset(obj, obj_id, index, attackstep, instance_ids)
+
             elif obj["metaconcept"] == "DBInstance":
-                if self.high_value_dbinstance(obj, index, dbinstance_ids):
-                    name = obj["name"]
-                    assert name not in applied_dbinstance_ids
-                    applied_dbinstance_ids.add(name)
+                obj_id = obj["name"]
+                attackstep = "ReadDatabase"
+                self.set_high_value_asset(
+                    obj, obj_id, index, attackstep, dbinstance_ids
+                )
+
             elif obj["metaconcept"] == "S3Bucket":
-                if self.high_value_bucket(obj, index, bucket_ids):
-                    name = obj["name"]
-                    assert name not in applied_bucket_ids
-                    applied_bucket_ids.add(name)
-        for instance_id in instance_ids:
-            if instance_id not in applied_instance_ids:
-                raise ValueError(f"EC2Instance {instance_id}, can't set consequence")
-        for dbinstance_id in dbinstance_ids:
-            if dbinstance_id not in applied_dbinstance_ids:
-                raise ValueError(f"Database instance {dbinstance_id}, can't set consequence")
-        for bucket_id in bucket_ids:
-            if bucket_id not in applied_bucket_ids:
-                raise ValueError(f"Bucket {bucket_id}, can't set consequence")
+                obj_id = obj["name"]
+                attackstep = "ReadObject"
+                self.set_high_value_asset(obj, obj_id, index, attackstep, bucket_ids)
 
+        error_msg = "{} {} not found, can't set high value assets"
+        if instance_ids:
+            raise ValueError(error_msg.format("EC2 instances", instance_ids))
+        if dbinstance_ids:
+            raise ValueError(error_msg.format("RDS instances", dbinstance_ids))
+        if bucket_ids:
+            raise ValueError(error_msg.format("S3 buckets", bucket_ids))
 
-    def high_value_instance(self, obj, index, instance_ids):
-        attackstep = "HighPrivilegeAccess"
-        instance_id = self.get_tag(obj, "aws-id")
-        if instance_id in instance_ids:
-            ev = self.evidence(attackstep)
-            self.model["objects"][index]["attacksteps"] = ev
-            self.result_map[self.result_key(obj, attackstep)] = instance_id
+    def set_high_value_asset(self, obj, identifier, index, attackstep, high_value_list):
+        if identifier in high_value_list:
+            self.model["objects"][index]["attacksteps"] = self.get_evidence(attackstep)
+            self.result_map[f"{obj['id']}.{attackstep}"] = identifier
+            high_value_list.remove(identifier)
             return True
         return False
 
-    def high_value_dbinstance(self, obj, index, dbinstances):
-        attackstep = "ReadDatabase"
-        if obj["name"] in dbinstances:
-            ev = self.evidence(attackstep)
-            self.model["objects"][index]["attacksteps"] = ev
-            self.result_map[self.result_key(obj, attackstep)] = obj["name"]
-            return True
-        return False
-
-    def high_value_bucket(self, obj, index, buckets):
-        attackstep = "ReadObject"
-        if obj["name"] in buckets:
-            ev = self.evidence(attackstep)
-            self.model["objects"][index]["attacksteps"] = ev
-            self.result_map[self.result_key(obj, attackstep)] = obj["name"]
-            return True
-        return False
-
-    def evidence(self, attackstep, evidence=10):
+    def get_evidence(self, attackstep, evidence=10):
         evidence_dict = {
             attackstep: {
                 "evidence": evidence,
@@ -90,9 +67,6 @@ class Model:
             }
         }
         return evidence_dict
-
-    def result_key(self, obj, attackstep):
-        return f"{obj['id']}.{attackstep}"
 
     def get_tag(self, obj, key):
         tags = obj.get("tags")
