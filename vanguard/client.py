@@ -38,8 +38,7 @@ class Client:
     def __init__(self, username, password, url, region="eu-central-1"):
         self.base_url = url
         self.backend_url = "{}/backend"
-        client_id, pool_id = self.cognito_params()
-        self.token = self.authenticate(username, password, region, client_id, pool_id)
+        self.token = self.authenticate(username, password, region)
 
     def simulate(self, model, profile):
         simulation_tag = self.simulate_model(model.model, profile.value)
@@ -56,14 +55,13 @@ class Client:
         model = self.wait_for_model(model_tag)
         return Model(model)
 
-    def authenticate(self, username, password, region, client_id, pool_id):
+    def authenticate(self, username, password, region):
         client = boto3.client(
             "cognito-idp",
             region_name=region,
             config=Config(signature_version=botocore.UNSIGNED),
         )
-        if not client_id or not pool_id:
-            client_id, pool_id = self.cognito_params()
+        client_id, pool_id = self.cognito_params()
         aws = AWSSRP(
             username=username,
             password=password,
@@ -172,7 +170,7 @@ class Client:
 
     def cognito_params(self):
         url = f"{self.base_url}/bundle.js"
-        pattern = r"{\s*UserPoolId:\s*['\"](eu-central-1[^\"]+)['\"],\s*ClientId:\s*['\"]([^'\"]+)['\"]\s*}"
+        pattern = r"{\s*UserPoolId:\s*['\"](eu-central-1[^'\"]+)['\"],\s*ClientId:\s*['\"]([^'\"]+)['\"]\s*}"
         with urllib.request.urlopen(url) as response:
             data = response.read().decode("utf-8")
         match = re.search(pattern, data)
