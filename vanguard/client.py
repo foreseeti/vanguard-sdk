@@ -37,6 +37,7 @@ except ModuleNotFoundError as e:
 class Client:
     def __init__(self, username, password, url, region="eu-central-1"):
         self.base_url = url
+        self.backend_url = "{}/backend"
         client_id, pool_id = self.cognito_params()
         self.token = self.authenticate(username, password, region, client_id, pool_id)
 
@@ -61,6 +62,8 @@ class Client:
             region_name=region,
             config=Config(signature_version=botocore.UNSIGNED),
         )
+        if not client_id or not pool_id:
+            client_id, pool_id = self.cognito_params()
         aws = AWSSRP(
             username=username,
             password=password,
@@ -73,7 +76,7 @@ class Client:
         return jwt_token
 
     def build_from_role(self, access_key, secret_key, region):
-        url = f"{self.base_url}/backend/build_from_role"
+        url = f"{self.backend_url}/build_from_role"
         data = json.dumps(
             dict(
                 region=region,
@@ -94,7 +97,7 @@ class Client:
         return
 
     def model_request(self, model_tag):
-        url = f"{self.base_url}/backend/get_model"
+        url = f"{self.backend_url}/get_model"
         data = json.dumps(dict(mtag=model_tag), separators=(",", ":")).encode("utf-8")
         req = urllib.request.Request(url, method="POST", data=data)
         req.add_header("Authorization", self.token)
@@ -102,7 +105,7 @@ class Client:
             return response.status, response.read()
 
     def simulate_model(self, model, profile):
-        url = f"{self.base_url}/backend/simulate"
+        url = f"{self.backend_url}/simulate"
         model["name"] = "vanguard_model"
         data = json.dumps(
             dict(model=model, profile=profile, demo=False), separators=(",", ":")
@@ -114,7 +117,7 @@ class Client:
             return data["tag"]
 
     def get_results(self, simulation_tag):
-        url = f"{self.base_url}/backend/results"
+        url = f"{self.backend_url}/results"
         data = json.dumps(dict(tag=simulation_tag), separators=(",", ":")).encode(
             "utf-8"
         )
@@ -169,7 +172,7 @@ class Client:
 
     def cognito_params(self):
         url = f"{self.base_url}/bundle.js"
-        pattern = r"{UserPoolId:\"(eu-central-1[^\"]+)\",ClientId:\"([^\"]+)\"}"
+        pattern = r"{\s*UserPoolId:\s*['\"](eu-central-1[^\"]+)['\"],\s*ClientId:\s*['\"]([^'\"]+)['\"]\s*}"
         with urllib.request.urlopen(url) as response:
             data = response.read().decode("utf-8")
         match = re.search(pattern, data)
@@ -177,3 +180,4 @@ class Client:
             userpool_id = str(match.group(1))
             client_id = str(match.group(2))
             return client_id, userpool_id
+        raise EnvironmentError("Failed to get cognito parameters")

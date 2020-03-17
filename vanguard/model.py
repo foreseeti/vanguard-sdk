@@ -19,16 +19,32 @@ class Model:
         self.result_map = {}
 
     def set_high_value_assets(self, **kwargs):
-        instances = kwargs.get("instances", [])
-        buckets = kwargs.get("buckets", [])
-        dbinstances = kwargs.get("dbinstances", [])
+        instance_ids = kwargs.get("instances", [])
+        applied_instance_ids = []
+        bucket_ids = kwargs.get("buckets", [])
+        applied_bucket_ids = []
+        dbinstance_ids = kwargs.get("dbinstances", [])
+        applied_dbinstance_ids = []
         for index, obj in enumerate(self.model["objects"]):
-            if obj["metaconcept"] == "S3Bucket":
-                self.high_value_bucket(obj, index, buckets)
+            if obj["metaconcept"] == "EC2Instance":
+                if self.high_value_instance(obj, index, instance_ids):
+                    applied_instance_ids.append(self.get_tag(obj, "aws-id"))
             elif obj["metaconcept"] == "DBInstance":
-                self.high_value_dbinstance(obj, index, dbinstances)
-            elif obj["metaconcept"] == "EC2Instance":
-                self.high_value_instance(obj, index, instances)
+                if self.high_value_dbinstance(obj, index, dbinstance_ids):
+                    applied_dbinstance_ids.append(obj["name"])
+            elif obj["metaconcept"] == "S3Bucket":
+                if self.high_value_bucket(obj, index, bucket_ids):
+                    applied_bucket_ids.append(obj["name"])
+        for instance_id in instance_ids:
+            if instance_id not in applied_instance_ids:
+                raise ValueError(f"EC2Instance {instance_id}, can't set consequence")
+        for dbinstance_id in dbinstance_ids:
+            if dbinstance_id not in applied_dbinstance_ids:
+                raise ValueError(f"Database instance {dbinstance_id}, can't set consequence")
+        for bucket_id in bucket_ids:
+            if bucket_id not in applied_bucket_ids:
+                raise ValueError(f"Bucket {bucket_id}, can't set consequence")
+
 
     def high_value_instance(self, obj, index, instance_ids):
         attackstep = "HighPrivilegeAccess"
@@ -37,6 +53,8 @@ class Model:
             ev = self.evidence(attackstep)
             self.model["objects"][index]["attacksteps"] = ev
             self.result_map[self.result_key(obj, attackstep)] = instance_id
+            return True
+        return False
 
     def high_value_dbinstance(self, obj, index, dbinstances):
         attackstep = "ReadDatabase"
@@ -44,6 +62,8 @@ class Model:
             ev = self.evidence(attackstep)
             self.model["objects"][index]["attacksteps"] = ev
             self.result_map[self.result_key(obj, attackstep)] = obj["name"]
+            return True
+        return False
 
     def high_value_bucket(self, obj, index, buckets):
         attackstep = "ReadObject"
@@ -51,6 +71,8 @@ class Model:
             ev = self.evidence(attackstep)
             self.model["objects"][index]["attacksteps"] = ev
             self.result_map[self.result_key(obj, attackstep)] = obj["name"]
+            return True
+        return False
 
     def evidence(self, attackstep, evidence=10):
         evidence_dict = {
