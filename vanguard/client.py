@@ -85,6 +85,7 @@ class Client:
             "include_inspector": False,
         }
         res = requests.put(url, headers=self.headers, json=data)
+        res.raise_for_status()
         return res.json()["response"]["mtag"]
 
     def build_from_config(self, json_data):
@@ -100,26 +101,30 @@ class Client:
         base64d = base64.b64encode(content).decode("utf-8")
         data = {"files": [{"content": base64d, "filename": "apimodel.json"}]}
         res = requests.put(url, headers=self.headers, json=data)
+        res.raise_for_status()
         return res.json()["response"]["mtag"]
 
     def model_request(self, model_tag):
         url = f"{self.backend_url}/get_model"
         data = {"mtag": model_tag}
         res = requests.post(url, headers=self.headers, json=data)
-        return res.status_code, json.loads(res.content)
+        res.raise_for_status()
+        return res.status_code, res.json()["response"]
 
     def simulate_model(self, model, profile):
         url = f"{self.backend_url}/simulate"
         model["name"] = "vanguard_model"
         data = {"model": model, "profile": profile, "demo": False}
         res = requests.put(url, headers=self.headers, json=data)
+        res.raise_for_status()
         return res.json()["response"]["tag"]
 
     def get_results(self, simulation_tag):
         url = f"{self.backend_url}/results"
         data = {"tag": simulation_tag}
         res = requests.post(url, headers=self.headers, json=data)
-        return res.status_code, json.loads(res.content)
+        res.raise_for_status()
+        return res.status_code, res.json()["response"]
 
     def wait_for_results(self, simulation_tag):
         results = self.wait_for_response("get_results", simulation_tag)
@@ -163,7 +168,7 @@ class Client:
             time.sleep(5)
             status, data = getattr(self, function)(*args)
             if status == 200:
-                return data["response"]
+                return data
 
     def cognito_params(self, region):
         url = f"{self.base_url}/bundle.js"
