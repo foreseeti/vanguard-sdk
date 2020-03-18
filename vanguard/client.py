@@ -44,6 +44,8 @@ class Client:
         self.headers = {"Authorization": self.token}
 
     def simulate(self, model, profile):
+        if not model.result_map:
+            raise ValueError("Model must have at least one high value asset")
         simulation_tag = self.simulate_model(model.model, profile.value)
         results = self.wait_for_results(simulation_tag)
         return self.parse_results(results, model)
@@ -174,6 +176,7 @@ class Client:
         url = f"{self.base_url}/bundle.js"
         pattern = fr"{{\s*UserPoolId:\s*['\"]({region}[^'\"]+)['\"],\s*ClientId:\s*['\"]([^'\"]+)['\"]\s*}}"
         res = requests.get(url)
+        res.raise_for_status()
         data = res.text
         match = re.search(pattern, data)
         if match:
