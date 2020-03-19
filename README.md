@@ -1,7 +1,7 @@
 # securiCAD Vanguard SDK
 > Automated threat modeling and attack simulations in your CI/CD pipeline
 
-A python SDK for [foreseeti's securiCAD Vanguard](https://foreseeti.com/securicad-vanguard-for-aws/). Sign up for an account at [AWS Marketplace](https://aws.amazon.com/marketplace/pp/B08424ZMPS).
+A Python SDK for [foreseeti's securiCAD Vanguard](https://foreseeti.com/securicad-vanguard-for-aws/). Sign up for an account at [AWS Marketplace](https://aws.amazon.com/marketplace/pp/B08424ZMPS).
 
 ## Getting started
 
@@ -26,7 +26,8 @@ Cross-account role access and local model generation will be available soon.
 ### Run your first simulation
 The following snippet runs a simulation on an AWS environment where the high value asset is an EC2 instance with id `i-1a2b3c4d5e6f7` and prints the results. Please note, never store your credentials in source code, this is just an example.
 ```python
-import vanguard
+import json
+from securicad import vanguard
 
 # Your vanguard credentials
 email = "your vanguard email"
@@ -48,7 +49,7 @@ model.set_high_value_assets(instances=["i-1a2b3c4d5e6f7"])
 
 # Simulate and print the results
 results = client.simulate(model, profile=vanguard.Profile.CYBERCRIMINAL)
-print(results)
+print(json.dumps(results, indent=2))
 
 ```
 
@@ -57,9 +58,9 @@ If you wish to run securiCAD Vanguard with a local file, replace the `client.get
 ```python
 import json
 
-with open('data.json', 'r') as json_file:
+with open('data.json', encoding='utf-8') as json_file:
     data = json.load(json_file)
-    model = client.get_model(data=data)
+model = client.get_model(data=data)
 
 ```
 

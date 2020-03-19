@@ -1,4 +1,5 @@
-import vanguard
+import json
+from securicad import vanguard
 
 # Vanguard credentials
 email = "your vanguard email"
@@ -27,4 +28,4 @@ model.set_high_value_assets(
 # Supported Profiles are: STATESPONSORED, CYBERCRIMINAL and OPPORTUNIST
 results = client.simulate(model, profile=vanguard.Profile.CYBERCRIMINAL)
 
-print(results)
+print(json.dumps(results, indent=2))

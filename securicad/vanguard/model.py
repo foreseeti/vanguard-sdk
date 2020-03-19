@@ -32,9 +32,7 @@ class Model:
             elif obj["metaconcept"] == "DBInstance":
                 obj_id = obj["name"]
                 attackstep = "ReadDatabase"
-                self.set_high_value_asset(
-                    obj, obj_id, index, attackstep, dbinstance_ids
-                )
+                self.set_high_value_asset(obj, obj_id, index, attackstep, dbinstance_ids)
 
             elif obj["metaconcept"] == "S3Bucket":
                 obj_id = obj["name"]

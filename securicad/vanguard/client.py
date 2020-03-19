@@ -21,7 +21,7 @@ import base64
 
 import requests
 
-from vanguard.model import Model
+from securicad.vanguard.model import Model
 
 try:
     from pycognito.aws_srp import AWSSRP
@@ -62,9 +62,7 @@ class Client:
 
     def authenticate(self, username, password, region):
         client = boto3.client(
-            "cognito-idp",
-            region_name=region,
-            config=Config(signature_version=botocore.UNSIGNED),
+            "cognito-idp", region_name=region, config=Config(signature_version=botocore.UNSIGNED),
         )
         client_id, pool_id = self.cognito_params(region)
         aws = AWSSRP(
@@ -96,9 +94,7 @@ class Client:
         elif isinstance(json_data, bytes):
             content = json_data
         else:
-            raise ValueError(
-                f"a bytes-like object or dict is required, not {type(json_data)}"
-            )
+            raise ValueError(f"a bytes-like object or dict is required, not {type(json_data)}")
         url = f"{self.backend_url}/build_from_config"
         base64d = base64.b64encode(content).decode("utf-8")
         data = {"files": [{"content": base64d, "filename": "apimodel.json"}]}

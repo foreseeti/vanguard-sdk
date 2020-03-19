@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from vanguard.client import Client
+from securicad.vanguard.client import Client
 from enum import Enum
 
 __author__ = "Foreseeti AB"

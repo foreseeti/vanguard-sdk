@@ -1,0 +1,6 @@
+include dependencies.txt
+include example.py
+include LICENSE
+include NOTICE
+include README.md
+include requirements.txt
