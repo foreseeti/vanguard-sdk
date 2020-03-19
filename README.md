@@ -58,7 +58,7 @@ If you wish to run securiCAD Vanguard with a local file, replace the `client.get
 ```python
 import json
 
-with open('data.json', encoding='utf-8') as json_file:
+with open('data.json', mode='r', encoding='utf-8') as json_file:
     data = json.load(json_file)
 model = client.get_model(data=data)
 
