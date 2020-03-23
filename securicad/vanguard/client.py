@@ -23,17 +23,10 @@ import requests
 
 from securicad.vanguard.model import Model
 
-try:
-    from pycognito.aws_srp import AWSSRP
-except ModuleNotFoundError as e:
-    sys.exit(f"You need pycognito to run this script: {e}")
-
-try:
-    import boto3
-    import botocore
-    from botocore.config import Config
-except ModuleNotFoundError as e:
-    sys.exit(f"You need boto3 and botocore to run this script: {e}")
+import boto3
+import botocore
+from botocore.config import Config
+from pycognito.aws_srp import AWSSRP
 
 
 class Client:

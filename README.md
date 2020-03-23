@@ -9,11 +9,9 @@ A Python SDK for [foreseeti's securiCAD Vanguard](https://foreseeti.com/securica
 Go to [AWS Marketplace](https://aws.amazon.com/marketplace/pp/B08424ZMPS) and sign up to securiCAD Vanguard and verify your account.
 
 ### Download and setup the SDK
-Clone this repository and install the required third-party libraries.
+Install `securicad-vanguard` with pip:
 ```shell
-git clone https://github.com/foreseeti/securicad-vanguard-sdk.git
-cd securicad-vanguard-sdk
-pip install -r requirements.txt
+pip install securicad-vanguard
 ```
 
 ### Get the required AWS credentials
@@ -56,8 +54,6 @@ print(json.dumps(results, indent=2))
 If you wish to run securiCAD Vanguard with a local file, replace the `client.get_model()` call in the above example with:
 
 ```python
-import json
-
 with open('data.json', mode='r', encoding='utf-8') as json_file:
     data = json.load(json_file)
 model = client.get_model(data=data)
