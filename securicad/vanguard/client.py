@@ -136,7 +136,10 @@ class Client:
         data = {"tag": simulation_tag}
         res = requests.post(url, headers=self.headers, json=data)
         res.raise_for_status()
-        return res.status_code, res.json()["response"]
+        if res.status_code == 204:
+            return res.status_code, {}
+        else:
+            return res.status_code, res.json()["response"]
 
     def wait_for_results(self, simulation_tag):
         results = self.wait_for_response("get_results", simulation_tag)

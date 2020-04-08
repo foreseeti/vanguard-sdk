@@ -31,7 +31,7 @@ from securicad import vanguard
 email = "your vanguard email"
 password = "your vanguard password"
 
-# AWS credentials for IAM user 
+# AWS credentials for IAM user
 access_key = "aws access key id"
 secret_key = "aws secret key"
 region = "your aws region" # e.g., us-east-1
@@ -75,6 +75,9 @@ The results will be returned as a `dict` with your high value asset identifiers 
 }
 ```
 Check out `example.py` for a more detailed example.
+
+#### Vulnerability scan results
+Ifyou have a vulnerability scan result file you can attach it when making the call to get_model, keyword `vuln_data`. See `example.py` for details.
 
 ## Examples
 Below are a few examples of how you can use `boto3` to automatically collect name or ids for your high value assets.
