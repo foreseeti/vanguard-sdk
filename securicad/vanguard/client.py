@@ -45,10 +45,10 @@ class Client:
 
     def get_model(self, **kwargs):
         if kwargs.get("data"):
-            model_tag = self.build_from_config(kwargs.get("data"))
+            model_tag = self.build_from_config(kwargs.get("data"), kwargs.get("vuln_data"))
         else:
             model_tag = self.build_from_role(
-                kwargs.get("access_key"), kwargs.get("secret_key"), kwargs.get("region")
+                kwargs.get("access_key"), kwargs.get("secret_key"), kwargs.get("region"), kwargs.get("vuln_data"),
             )
         model = self.wait_for_model(model_tag)
         return Model(model)
@@ -69,7 +69,16 @@ class Client:
         jwt_token = f"JWT {access_token}"
         return jwt_token
 
-    def build_from_role(self, access_key, secret_key, region):
+    def encode_data(self, data):
+        if isinstance(data, dict):
+            content = json.dumps(data).encode("utf-8")
+        elif isinstance(data, bytes):
+            content = data
+        else:
+            raise ValueError(f"a bytes-like object or dict is required, not {type(data)}")
+        return content
+
+    def build_from_role(self, access_key, secret_key, region, vuln_data=None):
         url = f"{self.backend_url}/build_from_role"
         data = {
             "region": region,
@@ -77,20 +86,29 @@ class Client:
             "secret_key": secret_key,
             "include_inspector": False,
         }
+
+        if vuln_data:
+            vuln_content = self.encode_data(vuln_data)
+            vuln_base64d = base64.b64encode(vuln_content).decode("utf-8")
+            data["additionalFiles"] = [{"content" : vuln_base64d, "filename": "vulnerabilities.json"}]
+
         res = requests.put(url, headers=self.headers, json=data)
         res.raise_for_status()
         return res.json()["response"]["mtag"]
 
-    def build_from_config(self, json_data):
-        if isinstance(json_data, dict):
-            content = json.dumps(json_data).encode("utf-8")
-        elif isinstance(json_data, bytes):
-            content = json_data
-        else:
-            raise ValueError(f"a bytes-like object or dict is required, not {type(json_data)}")
+    def build_from_config(self, json_data, vuln_data=None):
         url = f"{self.backend_url}/build_from_config"
-        base64d = base64.b64encode(content).decode("utf-8")
-        data = {"files": [{"content": base64d, "filename": "apimodel.json"}]}
+
+        model_content = self.encode_data(json_data)
+        model_base64d = base64.b64encode(model_content).decode("utf-8")
+
+        data = {"files": [{"content": model_base64d, "filename": "apimodel.json"}]}
+
+        if vuln_data:
+            vuln_content = self.encode_data(vuln_data)
+            vuln_base64d = base64.b64encode(vuln_content).decode("utf-8")
+            data["additionalFiles"] = [{"content" : vuln_base64d, "filename": "vulnerabilities.json"}]
+
         res = requests.put(url, headers=self.headers, json=data)
         res.raise_for_status()
         return res.json()["response"]["mtag"]
@@ -100,7 +118,10 @@ class Client:
         data = {"mtag": model_tag}
         res = requests.post(url, headers=self.headers, json=data)
         res.raise_for_status()
-        return res.status_code, res.json()["response"]
+        if res.status_code == 204:
+            return res.status_code, {}
+        else:
+            return res.status_code, res.json()["response"]
 
     def simulate_model(self, model, profile):
         url = f"{self.backend_url}/simulate"
