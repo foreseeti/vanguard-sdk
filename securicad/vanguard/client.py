@@ -36,9 +36,10 @@ class Client:
         self.backend_url = f"{self.base_url}/backend"
         self.token = self.authenticate(username, password, region)
         self.headers = {
-            "User-Agent" : "Vanguard SDK {}".format(securicad.vanguard.__version__),
+            "User-Agent" : f"Vanguard SDK {securicad.vanguard.__version__}",
             "Authorization": self.token
         }
+        print(self.headers)
 
     def simulate(self, model, profile):
         if not model.result_map:
