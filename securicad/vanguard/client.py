@@ -39,7 +39,6 @@ class Client:
             "User-Agent" : f"Vanguard SDK {securicad.vanguard.__version__}",
             "Authorization": self.token
         }
-        print(self.headers)
 
     def simulate(self, model, profile):
         if not model.result_map:
