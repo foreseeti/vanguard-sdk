@@ -36,8 +36,8 @@ class Client:
         self.backend_url = f"{self.base_url}/backend"
         self.token = self.authenticate(username, password, region)
         self.headers = {
-            "User-Agent" : f"Vanguard SDK {securicad.vanguard.__version__}",
-            "Authorization": self.token
+            "User-Agent": f"Vanguard SDK {securicad.vanguard.__version__}",
+            "Authorization": self.token,
         }
 
     def simulate(self, model, profile):
@@ -52,7 +52,10 @@ class Client:
             model_tag = self.build_from_config(kwargs.get("data"), kwargs.get("vuln_data"))
         else:
             model_tag = self.build_from_role(
-                kwargs.get("access_key"), kwargs.get("secret_key"), kwargs.get("region"), kwargs.get("vuln_data"),
+                kwargs.get("access_key"),
+                kwargs.get("secret_key"),
+                kwargs.get("region"),
+                kwargs.get("vuln_data"),
             )
         model = self.wait_for_model(model_tag)
         return Model(model)
@@ -94,7 +97,9 @@ class Client:
         if vuln_data:
             vuln_content = self.encode_data(vuln_data)
             vuln_base64d = base64.b64encode(vuln_content).decode("utf-8")
-            data["additionalFiles"] = [{"content" : vuln_base64d, "filename": "vulnerabilities.json"}]
+            data["additionalFiles"] = [
+                {"content": vuln_base64d, "filename": "vulnerabilities.json"}
+            ]
 
         res = requests.put(url, headers=self.headers, json=data)
         res.raise_for_status()
@@ -111,7 +116,9 @@ class Client:
         if vuln_data:
             vuln_content = self.encode_data(vuln_data)
             vuln_base64d = base64.b64encode(vuln_content).decode("utf-8")
-            data["additionalFiles"] = [{"content" : vuln_base64d, "filename": "vulnerabilities.json"}]
+            data["additionalFiles"] = [
+                {"content": vuln_base64d, "filename": "vulnerabilities.json"}
+            ]
 
         res = requests.put(url, headers=self.headers, json=data)
         res.raise_for_status()
