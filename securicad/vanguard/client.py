@@ -21,6 +21,7 @@ import base64
 
 import requests
 
+import securicad.vanguard
 from securicad.vanguard.model import Model
 
 import boto3
@@ -34,7 +35,10 @@ class Client:
         self.base_url = url
         self.backend_url = f"{self.base_url}/backend"
         self.token = self.authenticate(username, password, region)
-        self.headers = {"Authorization": self.token}
+        self.headers = {
+            "User-Agent" : "Vanguard SDK {}".format(securicad.vanguard.__version__),
+            "Authorization": self.token
+        }
 
     def simulate(self, model, profile):
         if not model.result_map:

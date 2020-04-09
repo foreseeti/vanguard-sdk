@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from securicad.vanguard.client import Client
+__version__ = "0.0.1"
+__author__ = "Foreseeti AB"
+
 from enum import Enum
 
-__author__ = "Foreseeti AB"
-__version__ = "0.0.1"
-
+from securicad.vanguard.client import Client
 
 class Profile(Enum):
     STATESPONSORED = "State-sponsored"
