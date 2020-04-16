@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from collections import defaultdict
+
 
 class Model:
     def __init__(self, model):
@@ -19,41 +21,75 @@ class Model:
         self.result_map = {}
 
     def set_high_value_assets(self, **kwargs):
-        instance_ids = kwargs.get("instances", [])
-        bucket_ids = kwargs.get("buckets", [])
-        dbinstance_ids = kwargs.get("dbinstances", [])
+        hv_list = kwargs.get("high_value_assets", [])
 
+        # Normalize high value assets from short-hand version
+        for identifier in kwargs.get("instances", []):
+            hv_list.append(
+                {
+                    "metaconcept": "EC2Instance",
+                    "attackstep": "HighPrivilegeAccess",
+                    "id": {"type": "tag", "key": "aws-id", "value": identifier},
+                }
+            )
+        for identifier in kwargs.get("dbinstances", []):
+            hv_list.append(
+                {
+                    "metaconcept": "DBInstance",
+                    "attackstep": "ReadDatabase",
+                    "id": {"type": "name", "value": identifier},
+                }
+            )
+        for identifier in kwargs.get("buckets", []):
+            hv_list.append(
+                {
+                    "metaconcept": "S3Bucket",
+                    "attackstep": "ReadObject",
+                    "id": {"type": "name", "value": identifier},
+                }
+            )
+        for identifier in kwargs.get("dynamodb_tables", []):
+            hv_list.append(
+                {
+                    "metaconcept": "DynamoDBTable",
+                    "attackstep": "AuthenticatedRead",
+                    "id": {"type": "name", "value": identifier},
+                }
+            )
+
+        # Collect the high value assets under their metaconcept
+        hv_assets = defaultdict(list)
+        [hv_assets[x["metaconcept"]].append(x) for x in hv_list]
+
+        # Check if any of the objects are eligable as a high value asset
         for index, obj in enumerate(self.model["objects"]):
-            if obj["metaconcept"] == "EC2Instance":
-                obj_id = self.get_tag(obj, "aws-id")
-                attackstep = "HighPrivilegeAccess"
-                self.set_high_value_asset(obj, obj_id, index, attackstep, instance_ids)
+            if obj["metaconcept"] in hv_assets:
+                for hv_asset in hv_assets[obj["metaconcept"]]:
+                    if self.is_high_value_asset(obj, hv_asset):
+                        self.set_high_value_asset(obj, hv_asset, index)
 
-            elif obj["metaconcept"] == "DBInstance":
-                obj_id = obj["name"]
-                attackstep = "ReadDatabase"
-                self.set_high_value_asset(obj, obj_id, index, attackstep, dbinstance_ids)
+        # Raise error if no high value asset matches were found
+        if not self.result_map:
+            raise ValueError(
+                f"Failed to set any high value assets, couldn't find {hv_list}"
+            )
 
-            elif obj["metaconcept"] == "S3Bucket":
-                obj_id = obj["name"]
-                attackstep = "ReadObject"
-                self.set_high_value_asset(obj, obj_id, index, attackstep, bucket_ids)
-
-        error_msg = "{} {} not found, can't set high value assets"
-        if instance_ids:
-            raise ValueError(error_msg.format("EC2 instances", instance_ids))
-        if dbinstance_ids:
-            raise ValueError(error_msg.format("RDS instances", dbinstance_ids))
-        if bucket_ids:
-            raise ValueError(error_msg.format("S3 buckets", bucket_ids))
-
-    def set_high_value_asset(self, obj, identifier, index, attackstep, high_value_list):
-        if identifier in high_value_list:
-            self.model["objects"][index]["attacksteps"] = self.get_evidence(attackstep)
-            self.result_map[f"{obj['id']}.{attackstep}"] = identifier
-            high_value_list.remove(identifier)
+    def is_high_value_asset(self, obj, hv_asset):
+        # Check if a model object matches any of the high value assets
+        if hv_asset["id"]["type"] == "name" and obj["name"] == hv_asset["id"]["value"]:
             return True
+        elif hv_asset["id"]["type"] == "tag":
+            if self.get_tag(obj, hv_asset["id"]["key"]) == hv_asset["id"]["value"]:
+                return True
+        elif hv_asset["id"]["type"] == "arn":
+            if self.get_tag(obj, "arn") == hv_asset["id"]["value"]:
+                return True
         return False
+
+    def set_high_value_asset(self, obj, hv_asset, index):
+        attackstep = hv_asset["attackstep"]
+        self.model["objects"][index]["attacksteps"] = self.get_evidence(attackstep)
+        self.result_map[f"{obj['id']}.{attackstep}"] = hv_asset
 
     def get_evidence(self, attackstep, evidence=10):
         evidence_dict = {

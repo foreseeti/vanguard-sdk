@@ -60,21 +60,58 @@ model = client.get_model(data=data)
 
 ```
 
-The results will be returned as a `dict` with your high value asset identifiers as keys. For example:
+The results will be returned as a `dict` with your high value asset identifiers as keys and sorted under object type. For example:
 ```json
 {
-    "buckets": {},
-    "dbinstances": {},
-    "instances": {
+    "EC2Instance": {
         "i-1a2b3c4d5e6f7": {
-            "object_name": "web-server",
-            "probability": 0.5,
-            "ttc": 59
+            "attackstep": "HighPrivilegeAccess",
+            "id": "i-1a2b3c4d5e6f7",
+            "metaconcept": "EC2Instance",
+            "name": "web-server",
+            "probability": 0.65,
+            "ttc": 42
         }
     }
 }
 ```
 Check out `example.py` for a more detailed example.
+
+## High value assets
+The securiCAD Vanguard SDK features a set of predefined parameters for settings high value assets for certain AWS services as well as a more comprehensive option.
+### Predefined parameters
+Predefined parameters can be used to set high value assets in a model with the function `model.set_high_value_assets()`
+- **EC2 instances**
+Use the `instances` parameter to set a list of EC2 instance ids as high value assets. For example: `instances=["i-1a2b3c4d5e6f", "i-9i8u7y6t5r4e"]`
+- **S3 buckets**
+Use the `buckets` parameter to set a list of S3 bucket names as high value assets. For example: `buckets=["vanguard/bucket1", "vanguard/bucket2"]`
+- **RDS instances**
+Use the `dbinstances` parameter to set a list of RDS db instance identifers as high value assets. For example: `dbinstances=["aurora-db-instance"]`
+- **DynamoDB tables**
+Use the `dynamodb_tables` parameter to set a list of dynamodb table names as high value assets. For example: `dynamodb_tables=["vanguardTable"]`
+
+### Advanced
+Any object and attack step in the model can be set as a high value asset but it requires knowledge about the underlying model and concepts. Use `model.set_high_value_assets()` with the `high_value_assets` parameter and set your high value assets by specifying the object type `metaconcept`, object identifier `id` and target `attackstep` as a list of dicts:
+```python
+[
+    {
+        "metaconcept": "EC2Instance",
+        "attackstep": "HighPrivilegeAccess",
+        "id": {"type": "name", "value": "Web Server Instance"}
+    },
+    {
+        "metaconcept": "S3Bucket",
+        "attackstep": "AuthenticatedWrite",
+        "id": {"type": "tag", "key": "owner", "value": "erik"}
+    },
+    {
+        "metaconcept": "S3Bucket",
+        "attackstep": "AuthenticatedRead",
+        "id": {"type": "arn", "value": "arn:aws:s3:::my_corporate_bucket/"}
+    }
+]
+```
+`id` is used to match objects in the model with the high value assets. The supported `type` are currently `name`, `arn` and `tag`.
 
 ## Examples
 Below are a few examples of how you can use `boto3` to automatically collect name or ids for your high value assets.

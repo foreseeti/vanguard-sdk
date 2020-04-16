@@ -49,7 +49,9 @@ class Client:
 
     def get_model(self, **kwargs):
         if kwargs.get("data"):
-            model_tag = self.build_from_config(kwargs.get("data"), kwargs.get("vuln_data"))
+            model_tag = self.build_from_config(
+                kwargs.get("data"), kwargs.get("vuln_data")
+            )
         else:
             model_tag = self.build_from_role(
                 kwargs.get("access_key"),
@@ -62,7 +64,9 @@ class Client:
 
     def authenticate(self, username, password, region):
         client = boto3.client(
-            "cognito-idp", region_name=region, config=Config(signature_version=botocore.UNSIGNED),
+            "cognito-idp",
+            region_name=region,
+            config=Config(signature_version=botocore.UNSIGNED),
         )
         client_id, pool_id = self.cognito_params(region)
         aws = AWSSRP(
@@ -82,7 +86,9 @@ class Client:
         elif isinstance(data, bytes):
             content = data
         else:
-            raise ValueError(f"a bytes-like object or dict is required, not {type(data)}")
+            raise ValueError(
+                f"a bytes-like object or dict is required, not {type(data)}"
+            )
         return content
 
     def build_from_role(self, access_key, secret_key, region, vuln_data=None):
@@ -160,19 +166,16 @@ class Client:
         return self.wait_for_response("model_request", model_tag)
 
     def parse_results(self, results, model):
-        buckets = {}
-        instances = {}
-        dbinstances = {}
+        formatted_results = {}
         for key, data in results["data"].items():
-            obj_id = model.result_map[key]
+            hv_asset = model.result_map[key]
             result = self.format_result(data)
-            if data["metaconcept"] == "EC2Instance":
-                instances[obj_id] = result
-            if data["metaconcept"] == "DBInstance":
-                dbinstances[obj_id] = result
-            if data["metaconcept"] == "S3Bucket":
-                buckets[obj_id] = result
-        return {"instances": instances, "buckets": buckets, "dbinstances": dbinstances}
+            hv_asset.update(result)
+            hv_asset["id"] = hv_asset["id"]["value"]
+            if hv_asset["metaconcept"] not in formatted_results:
+                formatted_results[hv_asset["metaconcept"]] = {}
+            formatted_results[hv_asset["metaconcept"]][hv_asset["id"]] = hv_asset
+        return formatted_results
 
     def format_result(self, data):
         ttc50 = float(data["ttc50"])
@@ -184,7 +187,7 @@ class Client:
         result = {
             "probability": float(data["probability"]),
             "ttc": ttc50,
-            "object_name": data["object_name"],
+            "name": data["object_name"],
         }
         return result
 
