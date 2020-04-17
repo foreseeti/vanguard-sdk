@@ -97,17 +97,17 @@ Any object and attack step in the model can be set as a high value asset but it 
     {
         "metaconcept": "EC2Instance",
         "attackstep": "HighPrivilegeAccess",
-        "id": {"type": "name", "value": "Web Server Instance"}
-    },
+         "id": {"type": "tag", "key": "owner", "value": "erik"}
+    },    
     {
         "metaconcept": "S3Bucket",
         "attackstep": "AuthenticatedWrite",
-        "id": {"type": "tag", "key": "owner", "value": "erik"}
+        "id": {"type": "arn", "value": "arn:aws:s3:::my_corporate_bucket/"}  
     },
     {
-        "metaconcept": "S3Bucket",
+        "metaconcept": "DynamoDBTable",
         "attackstep": "AuthenticatedRead",
-        "id": {"type": "arn", "value": "arn:aws:s3:::my_corporate_bucket/"}
+        "id": {"type": "name", "value": "VanguardTable"}
     }
 ]
 ```
