@@ -103,7 +103,7 @@ class Model:
         return evidence_dict
 
     def get_tag(self, obj, key):
-        tags = obj.get("tags")
+        tags = obj.get("tags", [])
         for tag in tags:
             if tag["key"] == key:
                 return tag["value"]
