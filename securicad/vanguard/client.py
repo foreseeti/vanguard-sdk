@@ -40,12 +40,15 @@ class Client:
             "Authorization": self.token,
         }
 
-    def simulate(self, model, profile):
+    def simulate(self, model, profile, export_report=False):
         if not model.result_map:
             raise ValueError("Model must have at least one high value asset")
         simulation_tag = self.simulate_model(model.model, profile.value)
         results = self.wait_for_results(simulation_tag)
-        return self.parse_results(results, model)
+        parsed_results = self.parse_results(results["results"], model)
+        if export_report:
+            parsed_results["Report"] = results
+        return parsed_results
 
     def get_model(self, **kwargs):
         if kwargs.get("data"):
@@ -160,7 +163,7 @@ class Client:
 
     def wait_for_results(self, simulation_tag):
         results = self.wait_for_response("get_results", simulation_tag)
-        return results["results"]
+        return results
 
     def wait_for_model(self, model_tag):
         return self.wait_for_response("model_request", model_tag)
