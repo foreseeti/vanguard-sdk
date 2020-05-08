@@ -62,11 +62,11 @@ class Model:
         [hv_assets[x["metaconcept"]].append(x) for x in hv_list]
 
         # Check if any of the objects are eligable as a high value asset
-        for index, obj in enumerate(self.model["objects"]):
+        for oid, obj in self.model["objects"].items():
             if obj["metaconcept"] in hv_assets:
                 for hv_asset in hv_assets[obj["metaconcept"]]:
                     if self.is_high_value_asset(obj, hv_asset):
-                        self.set_high_value_asset(obj, hv_asset, index)
+                        self.set_high_value_asset(oid, obj, hv_asset)
 
         # Raise error if no high value asset matches were found
         if not self.result_map:
@@ -79,31 +79,24 @@ class Model:
         if hv_asset["id"]["type"] == "name" and obj["name"] == hv_asset["id"]["value"]:
             return True
         elif hv_asset["id"]["type"] == "tag":
-            if self.get_tag(obj, hv_asset["id"]["key"]) == hv_asset["id"]["value"]:
+            if obj.get("tags", {}).get(hv_asset["id"]["key"]) == hv_asset["id"]["value"]:
                 return True
         elif hv_asset["id"]["type"] == "arn":
-            if self.get_tag(obj, "arn") == hv_asset["id"]["value"]:
+            if obj.get("tags", {}).get("arn") == hv_asset["id"]["value"]:
                 return True
         return False
 
-    def set_high_value_asset(self, obj, hv_asset, index):
+    def set_high_value_asset(self, oid, obj, hv_asset):
         attackstep = hv_asset["attackstep"]
-        self.model["objects"][index]["attacksteps"] = self.get_evidence(attackstep)
-        self.result_map[f"{obj['id']}.{attackstep}"] = hv_asset
+        self.model["objects"][oid]["attacksteps"] = self.get_evidence(attackstep)
+        self.result_map[f"{obj['eid']}.{attackstep}"] = hv_asset
 
     def get_evidence(self, attackstep, evidence=10):
-        evidence_dict = {
-            attackstep: {
-                "evidence": evidence,
+        evidence_list = [
+            {
                 "name": attackstep,
                 "distribution": "securiCAD default",
-                "distribution_params": {},
+                "consequence": evidence,
             }
-        }
-        return evidence_dict
-
-    def get_tag(self, obj, key):
-        tags = obj.get("tags", [])
-        for tag in tags:
-            if tag["key"] == key:
-                return tag["value"]
+        ]
+        return evidence_list
