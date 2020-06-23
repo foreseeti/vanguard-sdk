@@ -23,6 +23,7 @@ import requests
 
 import securicad.vanguard
 from securicad.vanguard.model import Model
+from securicad.vanguard.exceptions import *
 
 import boto3
 import botocore
@@ -79,9 +80,14 @@ class Client:
             client_id=client_id,
             client=client,
         )
-        access_token = aws.authenticate_user()["AuthenticationResult"]["AccessToken"]
-        jwt_token = f"JWT {access_token}"
-        return jwt_token
+        try:
+            access_token = aws.authenticate_user()["AuthenticationResult"]["AccessToken"]
+            jwt_token = f"JWT {access_token}"
+            return jwt_token
+
+        except:
+            raise IncorrectCredentials("Wrong password or username")
+       
 
     def encode_data(self, data):
         if isinstance(data, dict):
