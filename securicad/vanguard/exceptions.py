@@ -14,8 +14,10 @@
 
 
 # Raised when authentication of username or password fails
-class IncorrectCredentials(Exception):
+class IncorrectVanguardCredentials(Exception):
     pass
 
+class IncorrectAwsCredentials(Exception):
+    pass
 
     

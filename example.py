@@ -1,5 +1,10 @@
 import json
+import sys
+
 from securicad import vanguard
+from securicad.vanguard.exceptions import *
+
+
 
 # Vanguard credentials
 email = "your vanguard email"
@@ -13,8 +18,12 @@ region = "your aws region"
 # Create an authenticated vanguard client
 client = vanguard.client(username=email, password=password)
 
-# Generate a model from your AWS environment
-model = client.get_model(access_key=access_key, secret_key=secret_key, region=region)
+# Generate a model from your AWS environment and catch invalid AWS credentials
+try:
+    model = client.get_model(access_key=access_key, secret_key=secret_key, region=region)
+except IncorrectAwsCredentials as e:
+    sys.exit(e)
+
 
 # Set high value assets in the model
 # Supported asset types are EC2 instances, S3 buckets and RDS databases

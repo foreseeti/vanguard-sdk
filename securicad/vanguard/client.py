@@ -20,6 +20,7 @@ import math
 import base64
 
 import requests
+from requests.exceptions import HTTPError
 
 import securicad.vanguard
 from securicad.vanguard.model import Model
@@ -65,9 +66,15 @@ class Client:
             )
         try:
             model = self.wait_for_model(model_tag)
-            return Model(model)
-        except:
-            print("error")
+   
+        except HTTPError as e:
+            code = e.response.status_code
+            error = e.response.json().get("error")
+            if code == 400 and error == "Provided credentials were not accepted by AWS" :
+                raise IncorrectAwsCredentials(error)
+                raise e  
+        return Model(model)
+             
 
     def authenticate(self, username, password, region):
         client = boto3.client(
@@ -87,9 +94,8 @@ class Client:
             access_token = aws.authenticate_user()["AuthenticationResult"]["AccessToken"]
             jwt_token = f"JWT {access_token}"
             return jwt_token
-
         except:
-            raise IncorrectCredentials("Wrong password or username")
+            raise IncorrectVanguardCredentials("Wrong password or username")
        
 
     def encode_data(self, data):
