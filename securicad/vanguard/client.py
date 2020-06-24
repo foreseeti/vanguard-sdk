@@ -52,7 +52,7 @@ class Client:
         return parsed_results
 
     def get_model(self, **kwargs):
-        if kwargs.get("data"):
+        if "data" in kwargs and kwargs["data"] is not None:
             model_tag = self.build_from_config(
                 kwargs.get("data"), kwargs.get("vuln_data")
             )
@@ -63,8 +63,11 @@ class Client:
                 kwargs.get("region"),
                 kwargs.get("vuln_data"),
             )
-        model = self.wait_for_model(model_tag)
-        return Model(model)
+        try:
+            model = self.wait_for_model(model_tag)
+            return Model(model)
+        except:
+            print("error")
 
     def authenticate(self, username, password, region):
         client = boto3.client(
