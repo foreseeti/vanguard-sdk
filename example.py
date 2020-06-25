@@ -28,12 +28,17 @@ except AwsCredentialsError as e:
 
 
 # Set high value assets in the model
+# Check that model has at least one high value asset
 # Supported asset types are EC2 instances, S3 buckets and RDS databases
-model.set_high_value_assets(
-    instances=["instance-id-1", "instance-id-2"],
-    buckets=["bucket_name"],
-    dbinstances=["db-instance-identifier"],
-)
+
+try:
+    model.set_high_value_assets(
+        instances=["instance-id-1", "instance-id-2"],
+        buckets=["bucket_name"],
+        dbinstances=["db-instance-identifier"],
+    )
+except HighValueAssetError as e:
+    sys.exit(e)
 
 # Start the simulation and wait for the results
 # Supported Profiles are: STATESPONSORED, CYBERCRIMINAL and OPPORTUNIST

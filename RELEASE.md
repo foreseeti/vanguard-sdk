@@ -29,7 +29,7 @@ git push origin release/X.Y.Z
 ```
 #### Create and activate release venv
 ```
-python3.7 -m venv release-venv
+python3 -m venv release-venv
 . release-venv/bin/activate
 pip install --upgrade pip
 pip install wheel twine

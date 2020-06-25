@@ -17,7 +17,10 @@
 class VanguardCredentialsError(Exception):
     pass
 
+
 class AwsCredentialsError(Exception):
     pass
 
-    
+
+class HighValueAssetError(Exception):
+    pass

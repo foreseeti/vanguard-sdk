@@ -15,7 +15,7 @@ if [ ! -d "$hooks_dir" ]; then
 fi
 
 if [ ! -d "$fmt_venv" ]; then
-  python3.7 -m venv "$fmt_venv"
+  python3 -m venv "$fmt_venv"
 fi
 
 . "$fmt_venv/bin/activate"
