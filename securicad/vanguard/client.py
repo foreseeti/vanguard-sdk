@@ -24,7 +24,7 @@ from requests.exceptions import HTTPError
 
 import securicad.vanguard
 from securicad.vanguard.model import Model
-from securicad.vanguard.exceptions import *
+from securicad.vanguard.exceptions import VanguardCredentialsError, AwsCredentialsError
 
 import boto3
 import botocore
@@ -70,7 +70,7 @@ class Client:
             error_message = e.response.json().get("error")
             if code == 400 and error_message == "Provided credentials were not accepted by AWS":
                 raise AwsCredentialsError(error_message)
-                raise e
+            raise e
         return Model(model)
 
     def authenticate(self, username, password, region):

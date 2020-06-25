@@ -2,7 +2,11 @@ import json
 import sys
 
 from securicad import vanguard
-from securicad.vanguard.exceptions import *
+from securicad.vanguard.exceptions import (
+    VanguardCredentialsError,
+    AwsCredentialsError,
+    HighValueAssetError,
+)
 
 
 # Vanguard credentials

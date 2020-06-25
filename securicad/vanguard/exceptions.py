@@ -18,9 +18,11 @@ class VanguardCredentialsError(Exception):
     pass
 
 
+# Raised when authentication of AWS credentials fails
 class AwsCredentialsError(Exception):
     pass
 
 
+# Raised if no high value asset matches could be found
 class HighValueAssetError(Exception):
     pass
