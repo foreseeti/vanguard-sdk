@@ -71,7 +71,7 @@ class Client:
             code = e.response.status_code
             error = e.response.json().get("error")
             if code == 400 and error == "Provided credentials were not accepted by AWS" :
-                raise IncorrectAwsCredentials(error)
+                raise AwsCredentialsError(error)
                 raise e  
         return Model(model)
              
@@ -95,7 +95,9 @@ class Client:
             jwt_token = f"JWT {access_token}"
             return jwt_token
         except:
-            raise IncorrectVanguardCredentials("Wrong password or username")
+            message = "Invalid password or username"
+            raise VanguardCredentialsError(message)
+            
        
 
     def encode_data(self, data):
