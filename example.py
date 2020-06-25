@@ -5,7 +5,6 @@ from securicad import vanguard
 from securicad.vanguard.exceptions import *
 
 
-
 # Vanguard credentials
 email = "your vanguard email"
 password = "your vanguard password"
@@ -15,13 +14,16 @@ access_key = "aws access key id"
 secret_key = "aws secret key"
 region = "your aws region"
 
-# Create an authenticated vanguard client
-client = vanguard.client(username=email, password=password)
+# Create an authenticated vanguard client and catch invalid Vanguard credentials
+try:
+    client = vanguard.client(username=email, password=password)
+except VanguardCredentialsError as e:
+    sys.exit(e)
 
 # Generate a model from your AWS environment and catch invalid AWS credentials
 try:
     model = client.get_model(access_key=access_key, secret_key=secret_key, region=region)
-except IncorrectAwsCredentials as e:
+except AwsCredentialsError as e:
     sys.exit(e)
 
 

@@ -14,10 +14,10 @@
 
 
 # Raised when authentication of username or password fails
-class IncorrectVanguardCredentials(Exception):
+class VanguardCredentialsError(Exception):
     pass
 
-class IncorrectAwsCredentials(Exception):
+class AwsCredentialsError(Exception):
     pass
 
     
