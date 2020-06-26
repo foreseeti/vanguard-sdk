@@ -70,7 +70,13 @@ class Client:
             error_message = e.response.json().get("error")
             if code == 400 and error_message == "Provided credentials were not accepted by AWS":
                 raise AwsCredentialsError(error_message)
+
+            pattern = r"You don't have permission to perform the required action: .+?, please review the IAM policy"
+            active = re.fullmatch(pattern, error_message).group()
+            if code == 400 and error_message == active:
+                raise AwsCredentialsError(error_message)
             raise e
+
         return Model(model)
 
     def authenticate(self, username, password, region):
