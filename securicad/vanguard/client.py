@@ -71,9 +71,9 @@ class Client:
             if code == 400 and error_message == "Provided credentials were not accepted by AWS":
                 raise AwsCredentialsError(error_message)
 
-            pattern = r"You don't have permission to perform the required action: .+?, please review the IAM policy"
-            active = re.fullmatch(pattern, error_message).group()
-            if code == 400 and error_message == active:
+            msg1 = "You don't have permission to perform the required action"
+            msg2 = "You don't have permission to perfom a required action"
+            if code == 400 and (error_message.startswith(msg1) or error_message.startswith(msg2)):
                 raise AwsCredentialsError(error_message)
             raise e
 
