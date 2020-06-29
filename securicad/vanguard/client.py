@@ -35,16 +35,19 @@ from pycognito.aws_srp import AWSSRP
 class Client:
     def __init__(self, username, password, url, region="eu-central-1"):
         self.base_url = url
+
         self.backend_url = f"{self.base_url}/backend"
         self.token = self.authenticate(username, password, region)
         self.headers = {
             "User-Agent": f"Vanguard SDK {securicad.vanguard.__version__}",
             "Authorization": self.token,
         }
+        self.register()
 
     def simulate(self, model, profile, export_report=False):
         if not model.result_map:
             raise ValueError("Model must have at least one high value asset")
+        model.prepare()
         simulation_tag = self.simulate_model(model.model, profile.value)
         results = self.wait_for_results(simulation_tag)
         parsed_results = self.parse_results(results["results"], model)
@@ -98,6 +101,10 @@ class Client:
         except:
             error_message = "Invalid password or username"
             raise VanguardCredentialsError(error_message)
+
+    def register(self):
+        res = requests.get(url=f"{self.backend_url}/whoami", headers=self.headers)
+        res.raise_for_status()
 
     def encode_data(self, data):
         if isinstance(data, dict):
