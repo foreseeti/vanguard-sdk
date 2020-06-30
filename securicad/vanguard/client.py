@@ -51,7 +51,6 @@ class Client:
     def simulate(self, model, profile, export_report=False):
         if not model.result_map:
             raise ValueError("Model must have at least one high value asset")
-        model.prepare()
         simulation_tag = self.simulate_model(model.model, profile.value)
         results = self.wait_for_results(simulation_tag)
         parsed_results = self.parse_results(results["results"], model)
