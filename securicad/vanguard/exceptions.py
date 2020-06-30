@@ -26,3 +26,8 @@ class AwsCredentialsError(Exception):
 # Raised if no high value asset matches could be found
 class HighValueAssetError(Exception):
     pass
+
+
+# Raised if the user is ratelimited
+class RateLimitError(Exception):
+    pass

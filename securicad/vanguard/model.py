@@ -75,22 +75,6 @@ class Model:
             error_message = f"Failed to set any high value assets, couldn't find {hv_list}"
             raise HighValueAssetError(error_message)
 
-    def prepare(self):
-        for obj_oid, obj in self.model["objects"].items():
-            for attackstep_idx, attackstep in enumerate(obj["attacksteps"]):
-                if "lowercost" not in attackstep:
-                    self.model["objects"][obj_oid]["attacksteps"][attackstep_idx]["lowercost"] = 0
-                if "uppercost" not in attackstep:
-                    self.model["objects"][obj_oid]["attacksteps"][attackstep_idx]["uppercost"] = 0
-        if "metadata" not in self.model or not self.model["metadata"]:
-            self.model["metadata"] = {
-                "scadVersion": "1.0.0",
-                "isMAL": True,
-                "langVersion": "0.0.1",
-                "langID": "com.foreseeti.awslang",
-                "malVersion": "0.1.0-SNAPSHOT",
-            }
-
     def is_high_value_asset(self, obj, hv_asset):
         # Check if a model object matches any of the high value assets
         if hv_asset["id"]["type"] == "name" and obj["name"] == hv_asset["id"]["value"]:
@@ -108,8 +92,13 @@ class Model:
         self.model["objects"][oid]["attacksteps"] = self.get_evidence(attackstep)
         self.result_map[f"{obj['eid']}.{attackstep}"] = hv_asset
 
-    def get_evidence(self, attackstep, evidence=10):
-        evidence_list = [
-            {"name": attackstep, "distribution": "securiCAD default", "consequence": evidence,}
+    def get_evidence(self, attackstep, evidence=10, lowercost=0, uppercost=0):
+        return [
+            {
+                "name": attackstep,
+                "distribution": "securiCAD default",
+                "consequence": evidence,
+                "lowercost": lowercost,
+                "uppercost": uppercost,
+            }
         ]
-        return evidence_list
