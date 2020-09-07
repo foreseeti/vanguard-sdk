@@ -89,16 +89,14 @@ class Model:
 
     def set_high_value_asset(self, oid, obj, hv_asset):
         attackstep = hv_asset["attackstep"]
-        self.model["objects"][oid]["attacksteps"] = self.get_evidence(attackstep)
+        self.model["objects"][oid]["attacksteps"].append(self.get_evidence(attackstep))
         self.result_map[f"{obj['eid']}.{attackstep}"] = hv_asset
 
-    def get_evidence(self, attackstep, evidence=10, lowercost=0, uppercost=0):
-        return [
-            {
-                "name": attackstep,
-                "distribution": "securiCAD default",
-                "consequence": evidence,
-                "lowercost": lowercost,
-                "uppercost": uppercost,
-            }
-        ]
+    def get_evidence(self, name, distribution=None, lowercost=None, uppercost=None, consequence=10):
+        return {
+            "name": name,
+            "distribution": distribution,
+            "lowercost": lowercost,
+            "uppercost": uppercost,
+            "consequence": consequence,
+        }
