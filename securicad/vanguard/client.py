@@ -78,7 +78,7 @@ class Client:
                 raise AwsCredentialsError(error_message)
 
             msg1 = "You don't have permission to perform the required action"
-            msg2 = "You don't have permission to perfom a required action"
+            msg2 = "You don't have permission to perform a required action"
             if code == 400 and (error_message.startswith(msg1) or error_message.startswith(msg2)):
                 raise AwsCredentialsError(error_message)
             raise e
@@ -87,7 +87,9 @@ class Client:
 
     def authenticate(self, username, password, region):
         client = boto3.client(
-            "cognito-idp", region_name=region, config=Config(signature_version=botocore.UNSIGNED),
+            "cognito-idp",
+            region_name=region,
+            config=Config(signature_version=botocore.UNSIGNED),
         )
         client_id, pool_id = self.cognito_params(region)
         aws = AWSSRP(
