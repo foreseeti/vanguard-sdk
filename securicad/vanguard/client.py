@@ -74,13 +74,23 @@ class Client:
         except HTTPError as e:
             code = e.response.status_code
             error_message = e.response.json().get("error")
-            if code == 400 and error_message == "Provided credentials were not accepted by AWS":
+            expected_error_messages = [
+                "Provided credentials were not accepted by AWS",
+                "Your credentials does not give you the required access",
+                "You don't have permission to perform a required action, please review the IAM policy",
+            ]
+            if code == 400 and error_message in expected_error_messages:
                 raise AwsCredentialsError(error_message)
 
-            msg1 = "You don't have permission to perform the required action"
-            msg2 = "You don't have permission to perform a required action"
-            if code == 400 and (error_message.startswith(msg1) or error_message.startswith(msg2)):
+            expected_prefix = "You don't have permission to perform the required action: "
+            expected_suffix = ", please review the IAM policy"
+            if (
+                code == 400
+                and error_message.startswith(expected_prefix)
+                and error_message.endswith(expected_suffix)
+            ):
                 raise AwsCredentialsError(error_message)
+
             raise e
 
         return Model(model)
