@@ -13,21 +13,31 @@
 # limitations under the License.
 
 
+# Abstract vanguard exception, never raised
+class VanguardException(Exception):
+    pass
+
+
 # Raised when authentication of username or password fails
-class VanguardCredentialsError(Exception):
+class VanguardCredentialsError(VanguardException):
     pass
 
 
 # Raised when authentication of AWS credentials fails
-class AwsCredentialsError(Exception):
+class AwsCredentialsError(VanguardException):
+    pass
+
+
+# Raised if the region is invalid
+class AwsRegionError(VanguardException):
     pass
 
 
 # Raised if no high value asset matches could be found
-class HighValueAssetError(Exception):
+class HighValueAssetError(VanguardException):
     pass
 
 
 # Raised if the user is ratelimited
-class RateLimitError(Exception):
+class RateLimitError(VanguardException):
     pass

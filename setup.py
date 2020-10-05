@@ -3,7 +3,7 @@ import re
 import setuptools
 
 ROOT = os.path.dirname(__file__)
-DEPENDENCIES = os.path.join(ROOT, "dependencies.txt")
+REQUIREMENTS = os.path.join(ROOT, "requirements.in")
 README = os.path.join(ROOT, "README.md")
 INIT = os.path.join(ROOT, "securicad", "vanguard", "__init__.py")
 
@@ -24,12 +24,12 @@ def get_version():
         return VERSION_RE.search(init).group(1)
 
 
-def get_dependencies():
-    dependencies = []
-    with open(DEPENDENCIES, encoding="utf-8") as f:
-        for dependency in f:
-            dependencies.append(dependency.strip())
-    return dependencies
+def get_requirements():
+    requirements = []
+    with open(REQUIREMENTS, encoding="utf-8") as f:
+        for requirement in f:
+            requirements.append(requirement.strip())
+    return requirements
 
 
 def get_readme():
@@ -67,6 +67,6 @@ setuptools.setup(
     ],
     keywords="securicad vanguard threat modeling",
     packages=["securicad.vanguard"],
-    install_requires=get_dependencies(),
+    install_requires=get_requirements(),
     python_requires=">=3.6",
 )

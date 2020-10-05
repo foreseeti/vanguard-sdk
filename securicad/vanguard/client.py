@@ -12,28 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import base64
+import json
+import math
 import re
 import sys
-import json
 import time
-import math
-import base64
-
-import requests
-from requests.exceptions import HTTPError
-
-import securicad.vanguard
-from securicad.vanguard.model import Model
-from securicad.vanguard.exceptions import (
-    VanguardCredentialsError,
-    AwsCredentialsError,
-    RateLimitError,
-)
 
 import boto3
 import botocore
+import requests
 from botocore.config import Config
 from pycognito.aws_srp import AWSSRP
+from requests.exceptions import HTTPError
+
+import securicad.vanguard
+from securicad.vanguard.exceptions import (
+    AwsCredentialsError,
+    AwsRegionError,
+    RateLimitError,
+    VanguardCredentialsError,
+)
+from securicad.vanguard.model import Model
 
 
 class Client:
@@ -74,6 +74,8 @@ class Client:
         except HTTPError as e:
             code = e.response.status_code
             error_message = e.response.json().get("error")
+
+            # Credentials error 1
             expected_error_messages = [
                 "Provided credentials were not accepted by AWS",
                 "Your credentials does not give you the required access",
@@ -82,6 +84,7 @@ class Client:
             if code == 400 and error_message in expected_error_messages:
                 raise AwsCredentialsError(error_message)
 
+            # Credentials error 2
             expected_prefix = "You don't have permission to perform the required action: "
             expected_suffix = ", please review the IAM policy"
             if (
@@ -90,6 +93,11 @@ class Client:
                 and error_message.endswith(expected_suffix)
             ):
                 raise AwsCredentialsError(error_message)
+
+            # Region error
+            region_error = "Error in retrieving or parsing info from AWS: No valid AWS region found"
+            if code == 400 and error_message == region_error:
+                raise AwsRegionError(error_message)
 
             raise e
 

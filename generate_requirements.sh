@@ -4,11 +4,12 @@ set -e
 
 cd "$(dirname "$0")"
 
-rm -rf tmp-venv
-python3 -m venv tmp-venv
-. tmp-venv/bin/activate
+rm -rf requirements-venv
+python3 -m venv requirements-venv
+. requirements-venv/bin/activate
 pip install --upgrade pip
-pip install -r dependencies.txt
-pip freeze | grep -v "pkg-resources" > requirements.txt
+pip install --upgrade wheel
+pip install --upgrade pip-tools
+pip-compile --upgrade --no-emit-index-url --output-file requirements.txt requirements.in
 deactivate
-rm -rf tmp-venv
+rm -rf requirements-venv
