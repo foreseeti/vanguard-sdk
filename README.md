@@ -113,6 +113,46 @@ Any object and attack step in the model can be set as a high value asset but it 
 ```
 `id` is used to match objects in the model with the high value assets. The supported `type` are currently `name`, `arn` and `tag`.
 
+## Vulnerability data and vulnerabilities
+securiCAD Vanguard supports vulnerability data from third parties in combination with the AWS data. Typical examples are vulnerability scanners, static code analysis and dependency managers. Vulnerability data can be used to simulate the impact of known vulnerabilities in your AWS environment.
+
+If you wish to run the simulation with third party vulnerability data, include the the `vuln_data` parameter for `client.get_model()`.
+```python
+model = client.get_model(access_key=access_key, secret_key=secret_key, region=region, vuln_data=data)
+
+```
+The expected `vuln_data` format is explained below.
+
+### Vulnerability data format
+securiCAD Vanguard supports any type of vulnerability data by using a generic json format. The json file should be a list of `findings` that describes each finding from e.g., a vulnerability scanner. All fields are mandatory and validated, but some can be left empty. See the example below for a practical example of a finding of `CVE-2018-11776` on a specific EC2 instance. `"cve"`, `"cvss"` and `"id"` (instance-id) are always mandatory. If the application is not listening on any port, you can set `"port"` to `0`.
+
+```json
+{
+	"findings": [{
+            "id": "i-1a2b3c4d5e6f7",
+            "ip": "",
+            "dns":  "",
+            "application":  "Apache Struts 2.5.16",
+            "port":  80,
+            "name":  "CVE-2018-11776",
+            "description":  "Apache Struts versions 2.3 to 2.3.34 and 2.5 to 2.5.16 suffer from possible Remote Code Execution when alwaysSelectFullNamespace is true",
+            "cve":  "CVE-2018-11776",
+            "cwe":  "",
+            "cvss": [{
+                    "version": "3.0",
+                    "score": 8.1,
+                    "vector": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"
+            }]
+	}]
+}
+
+```
+
+### Vulnerabilities in the simulation
+securiCAD Vanguard uses the [CVSS vector](https://www.first.org/cvss/v3.1/specification-document) of a [CVE](https://cve.mitre.org/about/faqs.html#what_is_cve) to asses the impact of a vulnerability in the context of your AWS environment. For example, a CVE with `AV:L` is only exploitabe with local access and not via network access. `AC:H` will require more effort from the attacker compared to `AC:L` and `PR:H` will require the attacker to have high privilege access before being able to exploit the vulnerability in the simulation. The impact of the vulnerability is decided based on the `C/I/A` part of the vector.
+
+`CVSS:2.0` vectors are automatically converted to `CVSS:3` by the tool and if multiple versions are available, the tool will always select the latest one.
+
 ## Examples
 Below are a few examples of how you can use `boto3` to automatically collect name or ids for your high value assets.
 
