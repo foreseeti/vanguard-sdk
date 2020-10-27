@@ -9,7 +9,7 @@ botocore==1.18.12         # via -r requirements.in, boto3, s3transfer
 certifi==2020.6.20        # via requests
 cffi==1.14.3              # via cryptography
 chardet==3.0.4            # via requests
-cryptography==3.1.1       # via python-jose
+cryptography==3.2         # via python-jose
 ecdsa==0.14.1             # via python-jose
 envs==1.3                 # via pycognito
 idna==2.10                # via requests
