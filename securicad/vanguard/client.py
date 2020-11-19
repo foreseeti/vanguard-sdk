@@ -250,13 +250,35 @@ class Client:
             if status == 200:
                 return data
 
-    def cognito_params(self, region):
-        url = f"{self.base_url}/bundle.js"
-        pattern = fr"{{\s*UserPoolId:\s*['\"]({region}[^'\"]+)['\"],\s*ClientId:\s*['\"]([^'\"]+)['\"]\s*}}"
+    def _get_index_html(self):
+        url = f"{self.base_url}/index.html"
         res = requests.get(url)
         res.raise_for_status()
-        data = res.text
-        match = re.search(pattern, data)
+        return res.text
+
+    def _get_bundle_name(self):
+        index_html = self._get_index_html()
+        pattern = r'<script src="/(main\.[0-9a-f]+\.js)"></script>'
+        match = re.search(pattern, index_html)
+        if match:
+            return str(match.group(1))
+        pattern = r'<script src="/(bundle\.js\?v=0\.0\.0)"></script>'
+        match = re.search(pattern, index_html)
+        if match:
+            return str(match.group(1))
+        raise EnvironmentError("Failed to get bundle name")
+
+    def _get_bundle(self):
+        bundle_name = self._get_bundle_name()
+        url = f"{self.base_url}/{bundle_name}"
+        res = requests.get(url)
+        res.raise_for_status()
+        return res.text
+
+    def cognito_params(self, region):
+        bundle = self._get_bundle()
+        pattern = fr"{{\s*UserPoolId:\s*['\"]({region}[^'\"]+)['\"],\s*ClientId:\s*['\"]([^'\"]+)['\"]\s*}}"
+        match = re.search(pattern, bundle)
         if match:
             userpool_id = str(match.group(1))
             client_id = str(match.group(2))
