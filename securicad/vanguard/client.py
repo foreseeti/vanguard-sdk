@@ -262,7 +262,7 @@ class Client:
         match = re.search(pattern, index_html)
         if match:
             return str(match.group(1))
-        pattern = r'<script src="/(bundle\.js\?v=0\.0\.0)"></script>'
+        pattern = r'<script src="/(bundle\.js\?v=[^"]+)"></script>'
         match = re.search(pattern, index_html)
         if match:
             return str(match.group(1))
