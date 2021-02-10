@@ -18,11 +18,13 @@ import math
 import re
 import sys
 import time
+from urllib.parse import urljoin
 
 import boto3
 import botocore
 import requests
 from botocore.config import Config
+from bs4 import BeautifulSoup
 from pycognito.aws_srp import AWSSRP
 from requests.exceptions import HTTPError
 
@@ -38,8 +40,8 @@ from securicad.vanguard.model import Model
 
 class Client:
     def __init__(self, username, password, url, region="eu-central-1"):
-        self.base_url = url
-        self.backend_url = f"{self.base_url}/backend"
+        self.base_url = urljoin(url, "/")
+        self.backend_url = urljoin(url, "/backend/")
 
         self.token = self.authenticate(username, password, region)
         self.headers = {
@@ -126,7 +128,7 @@ class Client:
             raise VanguardCredentialsError(error_message)
 
     def register(self):
-        res = requests.get(url=f"{self.backend_url}/whoami", headers=self.headers)
+        res = requests.get(url=urljoin(self.backend_url, "whoami"), headers=self.headers)
         res.raise_for_status()
 
     def encode_data(self, data):
@@ -139,7 +141,7 @@ class Client:
         return content
 
     def build_from_role(self, access_key, secret_key, region, vuln_data=None):
-        url = f"{self.backend_url}/build_from_role"
+        url = urljoin(self.backend_url, "build_from_role")
         data = {
             "region": region,
             "access_key": access_key,
@@ -159,7 +161,7 @@ class Client:
         return res.json()["response"]["mtag"]
 
     def build_from_config(self, json_data, vuln_data=None):
-        url = f"{self.backend_url}/build_from_config"
+        url = urljoin(self.backend_url, "build_from_config")
 
         model_content = self.encode_data(json_data)
         model_base64d = base64.b64encode(model_content).decode("utf-8")
@@ -178,7 +180,7 @@ class Client:
         return res.json()["response"]["mtag"]
 
     def model_request(self, model_tag):
-        url = f"{self.backend_url}/get_model"
+        url = urljoin(self.backend_url, "get_model")
         data = {"mtag": model_tag}
         res = requests.post(url, headers=self.headers, json=data)
         res.raise_for_status()
@@ -188,7 +190,7 @@ class Client:
             return res.status_code, res.json()["response"]
 
     def simulate_model(self, model, profile):
-        url = f"{self.backend_url}/simulate"
+        url = urljoin(self.backend_url, "simulate")
         model["name"] = "vanguard_model"
         data = {"model": model, "profile": profile, "demo": False}
         res = requests.put(url, headers=self.headers, json=data)
@@ -200,7 +202,7 @@ class Client:
         return res.json()["response"]["tag"]
 
     def get_results(self, simulation_tag):
-        url = f"{self.backend_url}/results"
+        url = urljoin(self.backend_url, "results")
         data = {"tag": simulation_tag}
         res = requests.post(url, headers=self.headers, json=data)
         res.raise_for_status()
@@ -251,26 +253,25 @@ class Client:
                 return data
 
     def _get_index_html(self):
-        url = f"{self.base_url}/index.html"
+        url = urljoin(self.base_url, "index.html")
         res = requests.get(url)
         res.raise_for_status()
         return res.text
 
     def _get_bundle_name(self):
         index_html = self._get_index_html()
-        pattern = r'<script src="/(main\.[0-9a-f]+\.js)"></script>'
-        match = re.search(pattern, index_html)
-        if match:
-            return str(match.group(1))
-        pattern = r'<script src="/(bundle\.js\?v=[^"]+)"></script>'
-        match = re.search(pattern, index_html)
-        if match:
-            return str(match.group(1))
+        soup = BeautifulSoup(index_html, "html.parser")
+        pattern = re.compile(r"/main\.[0-9a-f]+\.js")
+        for tag in soup.find_all("script"):
+            if "src" not in tag.attrs:
+                continue
+            if pattern.fullmatch(tag["src"]) or tag["src"] == "/bundle.js":
+                return tag["src"]
         raise EnvironmentError("Failed to get bundle name")
 
     def _get_bundle(self):
         bundle_name = self._get_bundle_name()
-        url = f"{self.base_url}/{bundle_name}"
+        url = urljoin(self.base_url, bundle_name)
         res = requests.get(url)
         res.raise_for_status()
         return res.text
