@@ -117,7 +117,7 @@ For example: `dynamodb_tables=["vanguardTable"]`
 ### Advanced
 
 Any object and attack step in the model can be set as a high value asset but it requires knowledge about the underlying model and concepts.
-Use `model.set_high_value_assets()` with the `high_value_assets` parameter and set your high value assets by specifying the object type `metaconcept`, object identifier `id` and target `attackstep` as a list of dicts:
+Use `client.set_high_value_assets()` with the `high_value_assets` parameter and set your high value assets by specifying the object type `metaconcept`, object identifier `id` and target `attackstep` as a list of dicts:
 
 ```python
 high_value_assets = [
@@ -146,7 +146,7 @@ high_value_assets = [
 ]
 
 # Set high value assets in securiCAD model
-model.set_high_value_assets(high_value_assets=high_value_assets)
+client.set_high_value_assets(model, high_value_assets=high_value_assets)
 ```
 
 `id` is used to match objects in the model with the high value assets.

@@ -297,12 +297,13 @@ class Client:
         dbinstances: Optional[List[str]] = None,
         buckets: Optional[List[str]] = None,
         dynamodb_tables: Optional[List[str]] = None,
+        high_value_assets: Optional[List[Dict[str, Any]]] = None,
     ) -> None:
-        high_value_assets = []
+        hva_list: List[Dict[str, Any]] = []
 
         if instances is not None:
             for identifier in instances:
-                high_value_assets.append(
+                hva_list.append(
                     {
                         "metaconcept": "EC2Instance",
                         "attackstep": "HighPrivilegeAccess",
@@ -316,7 +317,7 @@ class Client:
 
         if dbinstances is not None:
             for identifier in dbinstances:
-                high_value_assets.append(
+                hva_list.append(
                     {
                         "metaconcept": "DBInstance",
                         "attackstep": "ReadDatabase",
@@ -329,7 +330,7 @@ class Client:
 
         if buckets is not None:
             for identifier in buckets:
-                high_value_assets.append(
+                hva_list.append(
                     {
                         "metaconcept": "S3Bucket",
                         "attackstep": "ReadObject",
@@ -342,7 +343,7 @@ class Client:
 
         if dynamodb_tables is not None:
             for identifier in dynamodb_tables:
-                high_value_assets.append(
+                hva_list.append(
                     {
                         "metaconcept": "DynamoDBTable",
                         "attackstep": "AuthenticatedRead",
@@ -353,7 +354,10 @@ class Client:
                     }
                 )
 
-        model.set_high_value_assets(high_value_assets=high_value_assets)
+        if high_value_assets is not None:
+            hva_list.extend(high_value_assets)
+
+        model.set_high_value_assets(high_value_assets=hva_list)
 
     def simulate(
         self, model: Model, profile: "Profile", export_report: bool = False
