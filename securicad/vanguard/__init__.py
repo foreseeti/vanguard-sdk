@@ -17,7 +17,7 @@ from enum import Enum
 
 from securicad.vanguard.client import Client
 
-__version__ = "0.0.8"
+__version__ = "0.1.0"
 __author__ = "Foreseeti AB"
 
 
