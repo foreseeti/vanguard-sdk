@@ -1,0 +1,14 @@
+[tool.isort]
+profile = "black"
+py_version = "38"
+
+[tool.black]
+target-version = ["py38"]
+
+[tool.pylint.messages_control]
+# https://black.readthedocs.io/en/stable/compatible_configs.html#pylint
+disable = "C0330, C0326"
+
+[tool.pylint.format]
+max-line-length = "88"
+good-names = "e"

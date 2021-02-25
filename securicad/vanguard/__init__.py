@@ -1,4 +1,4 @@
-# Copyright 2020 Foreseeti AB
+# Copyright 2020-2021 Foreseeti AB <https://foreseeti.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,5 +27,5 @@ class Profile(Enum):
     OPPORTUNIST = "Opportunist"
 
 
-def client(username, password, url="https://vanguard.securicad.com"):
-    return Client(username, password, url)
+def client(*args, **kwargs) -> Client:
+    return Client(*args, **kwargs)

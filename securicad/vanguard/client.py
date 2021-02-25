@@ -1,4 +1,4 @@
-# Copyright 2020 Foreseeti AB
+# Copyright 2020-2021 Foreseeti AB <https://foreseeti.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ import math
 import re
 import sys
 import time
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 from urllib.parse import urljoin
 
 import boto3
@@ -26,92 +27,124 @@ import requests
 from botocore.config import Config
 from bs4 import BeautifulSoup
 from pycognito.aws_srp import AWSSRP
-from requests.exceptions import HTTPError
+from securicad.model import Model
 
-import securicad.vanguard
 from securicad.vanguard.exceptions import (
     AwsCredentialsError,
     AwsRegionError,
     RateLimitError,
+    StatusCodeException,
     VanguardCredentialsError,
 )
-from securicad.vanguard.model import Model
+
+if TYPE_CHECKING:
+    from securicad.vanguard import Profile
 
 
 class Client:
-    def __init__(self, username, password, url, region="eu-central-1"):
-        self.base_url = urljoin(url, "/")
-        self.backend_url = urljoin(url, "/backend/")
+    def __init__(
+        self,
+        username: str,
+        password: str,
+        url: str = "https://vanguard.securicad.com",
+        region: str = "eu-central-1",
+    ):
+        self.__init_urls(url)
+        self.__init_session()
 
-        self.token = self.authenticate(username, password, region)
-        self.headers = {
-            "User-Agent": f"Vanguard SDK {securicad.vanguard.__version__}",
-            "Authorization": self.token,
-        }
-        self.register()
+        self.__login(username, password, region)
 
-    def simulate(self, model, profile, export_report=False):
-        if not model.result_map:
-            raise ValueError("Model must have at least one high value asset")
-        simulation_tag = self.simulate_model(model.model, profile.value)
-        results = self.wait_for_results(simulation_tag)
-        parsed_results = self.parse_results(results["results"], model)
-        if export_report:
-            parsed_results["Report"] = results
-        return parsed_results
+    def __init_urls(self, url: str) -> None:
+        self._base_url = urljoin(url, "/")
+        self._backend_url = urljoin(url, "/backend/")
 
-    def get_model(self, **kwargs):
-        if "data" in kwargs and kwargs["data"] is not None:
-            model_tag = self.build_from_config(kwargs.get("data"), kwargs.get("vuln_data"))
+    def __init_session(self) -> None:
+        def get_user_agent():
+            # pylint: disable=import-outside-toplevel
+            import securicad.vanguard
+
+            return f"Vanguard SDK {securicad.vanguard.__version__}"
+
+        self._session = requests.Session()
+        self._session.headers["User-Agent"] = get_user_agent()
+
+    def _get_access_token(self) -> Optional[str]:
+        if "Authorization" not in self._session.headers:
+            return None
+        return self._session.headers["Authorization"][len("JWT ") :]
+
+    def _set_access_token(self, access_token: Optional[str]) -> None:
+        if access_token is None:
+            if "Authorization" in self._session.headers:
+                del self._session.headers["Authorization"]
         else:
-            model_tag = self.build_from_role(
-                kwargs.get("access_key"),
-                kwargs.get("secret_key"),
-                kwargs.get("region"),
-                kwargs.get("vuln_data"),
+            self._session.headers["Authorization"] = f"JWT {access_token}"
+
+    def __request(self, method: str, endpoint: str, data: Any, status_code: int) -> Any:
+        url = urljoin(self._backend_url, endpoint)
+        response = self._session.request(method, url, json=data)
+        if response.status_code != status_code:
+            raise StatusCodeException(status_code, method, url, response)
+        return response.json()["response"]
+
+    def _get(self, endpoint: str, data: Any = None, status_code: int = 200) -> Any:
+        return self.__request("GET", endpoint, data, status_code)
+
+    def _post(self, endpoint: str, data: Any = None, status_code: int = 200) -> Any:
+        return self.__request("POST", endpoint, data, status_code)
+
+    def _put(self, endpoint: str, data: Any = None, status_code: int = 200) -> Any:
+        return self.__request("PUT", endpoint, data, status_code)
+
+    def _delete(self, endpoint: str, data: Any = None, status_code: int = 200) -> Any:
+        return self.__request("DELETE", endpoint, data, status_code)
+
+    def __login(self, username: str, password: str, region: str) -> None:
+        access_token = self.__authenticate(username, password, region)
+        self._set_access_token(access_token)
+        self._get("whoami")
+
+    def __authenticate(self, username: str, password: str, region: str) -> str:
+        def get_cognito_params() -> Tuple[str, str]:
+            bundle = get_bundle()
+            pattern = re.compile(
+                fr"{{\s*UserPoolId:\s*['\"]({region}[^'\"]+)['\"],\s*ClientId:\s*['\"]([^'\"]+)['\"]\s*}}"
             )
-        try:
-            model = self.wait_for_model(model_tag)
+            match = pattern.search(bundle)
+            if match:
+                userpool_id = str(match.group(1))
+                client_id = str(match.group(2))
+                return client_id, userpool_id
+            raise EnvironmentError("Failed to get cognito parameters")
 
-        except HTTPError as e:
-            code = e.response.status_code
-            error_message = e.response.json().get("error")
+        def get_bundle() -> str:
+            bundle_name = get_bundle_name()
+            response = requests.get(urljoin(self._base_url, bundle_name))
+            response.raise_for_status()
+            return response.text
 
-            # Credentials error 1
-            expected_error_messages = [
-                "Provided credentials were not accepted by AWS",
-                "Your credentials does not give you the required access",
-                "You don't have permission to perform a required action, please review the IAM policy",
-            ]
-            if code == 400 and error_message in expected_error_messages:
-                raise AwsCredentialsError(error_message)
+        def get_bundle_name() -> str:
+            index_html = get_index_html()
+            soup = BeautifulSoup(index_html, "html.parser")
+            pattern = re.compile(r"/main\.[0-9a-f]+\.js")
+            for tag in soup.find_all("script"):
+                if "src" not in tag.attrs:
+                    continue
+                if pattern.fullmatch(tag["src"]) or tag["src"] == "/bundle.js":
+                    return tag["src"]
+            raise EnvironmentError("Failed to get bundle name")
 
-            # Credentials error 2
-            expected_prefix = "You don't have permission to perform the required action: "
-            expected_suffix = ", please review the IAM policy"
-            if (
-                code == 400
-                and error_message.startswith(expected_prefix)
-                and error_message.endswith(expected_suffix)
-            ):
-                raise AwsCredentialsError(error_message)
+        def get_index_html() -> str:
+            response = requests.get(urljoin(self._base_url, "index.html"))
+            response.raise_for_status()
+            return response.text
 
-            # Region error
-            region_error = "Error in retrieving or parsing info from AWS: No valid AWS region found"
-            if code == 400 and error_message == region_error:
-                raise AwsRegionError(error_message)
-
-            raise e
-
-        return Model(model)
-
-    def authenticate(self, username, password, region):
         client = boto3.client(
             "cognito-idp",
             region_name=region,
             config=Config(signature_version=botocore.UNSIGNED),
         )
-        client_id, pool_id = self.cognito_params(region)
+        client_id, pool_id = get_cognito_params()
         aws = AWSSRP(
             username=username,
             password=password,
@@ -120,168 +153,289 @@ class Client:
             client=client,
         )
         try:
-            access_token = aws.authenticate_user()["AuthenticationResult"]["AccessToken"]
-            jwt_token = f"JWT {access_token}"
-            return jwt_token
+            access_token = aws.authenticate_user()["AuthenticationResult"][
+                "AccessToken"
+            ]
         except:
-            error_message = "Invalid password or username"
-            raise VanguardCredentialsError(error_message)
+            raise VanguardCredentialsError("Invalid password or username")
+        return access_token
 
-    def register(self):
-        res = requests.get(url=urljoin(self.backend_url, "whoami"), headers=self.headers)
-        res.raise_for_status()
+    def get_model(
+        self,
+        *,
+        data: Optional[Dict[str, Any]] = None,
+        access_key: Optional[str] = None,
+        secret_key: Optional[str] = None,
+        region: Optional[str] = None,
+        include_inspector: bool = False,
+        vuln_data: Optional[Dict[str, Any]] = None,
+    ) -> Model:
+        try:
+            if data is not None:
+                model_tag = self.__build_from_config(data, vuln_data)
+            elif (
+                access_key is not None and secret_key is not None and region is not None
+            ):
+                model_tag = self.__build_from_role(
+                    access_key, secret_key, region, include_inspector, vuln_data
+                )
+            else:
+                raise ValueError(
+                    "Either data or access_key, secret_key, and region must be specified"
+                )
+        except StatusCodeException as e:
+            if e.status_code == 429:
+                raise RateLimitError(
+                    "You are currently ratelimited, please wait for other models to complete"
+                )
+            raise
 
-    def encode_data(self, data):
-        if isinstance(data, dict):
-            content = json.dumps(data).encode("utf-8")
-        elif isinstance(data, bytes):
-            content = data
-        else:
-            raise ValueError(f"a bytes-like object or dict is required, not {type(data)}")
-        return content
+        try:
+            model = self.__wait_for_model(model_tag)
+        except StatusCodeException as e:
+            if e.status_code == 400:
+                self.__raise_model_error(e)
+            raise
 
-    def build_from_role(self, access_key, secret_key, region, vuln_data=None):
-        url = urljoin(self.backend_url, "build_from_role")
-        data = {
-            "region": region,
+        return Model(model)
+
+    def __build_from_config(
+        self, aws_data: Dict[str, Any], vuln_data: Optional[Dict[str, Any]]
+    ) -> str:
+        def get_file_content(dict_file: Dict[str, Any]) -> str:
+            file_str = json.dumps(dict_file, allow_nan=False, indent=2)
+            file_bytes = file_str.encode("utf-8")
+            file_base64 = base64.b64encode(file_bytes).decode("utf-8")
+            return file_base64
+
+        def get_file(name: str, dict_file: Dict[str, Any]) -> Dict[str, Any]:
+            return {
+                "filename": name,
+                "content": get_file_content(dict_file),
+            }
+
+        data: Dict[str, Any] = {"files": [get_file("apimodel.json", aws_data)]}
+        if vuln_data is not None:
+            data["additionalFiles"] = [get_file("vulnerabilities.json", vuln_data)]
+        response = self._put("build_from_config", data, 202)
+        return response["mtag"]
+
+    def __build_from_role(
+        self,
+        access_key: str,
+        secret_key: str,
+        region: str,
+        include_inspector: bool,
+        vuln_data: Optional[Dict[str, Any]],
+    ) -> str:
+        def get_file_content(dict_file: Dict[str, Any]) -> str:
+            file_str = json.dumps(dict_file, allow_nan=False, indent=2)
+            file_bytes = file_str.encode("utf-8")
+            file_base64 = base64.b64encode(file_bytes).decode("utf-8")
+            return file_base64
+
+        def get_file(name: str, dict_file: Dict[str, Any]) -> Dict[str, Any]:
+            return {
+                "filename": name,
+                "content": get_file_content(dict_file),
+            }
+
+        data: Dict[str, Any] = {
             "access_key": access_key,
             "secret_key": secret_key,
-            "include_inspector": False,
+            "region": region,
+            "include_inspector": include_inspector,
         }
+        if vuln_data is not None:
+            data["additionalFiles"] = [get_file("vulnerabilities.json", vuln_data)]
+        response = self._put("build_from_role", data, 202)
+        return response["mtag"]
 
-        if vuln_data:
-            vuln_content = self.encode_data(vuln_data)
-            vuln_base64d = base64.b64encode(vuln_content).decode("utf-8")
-            data["additionalFiles"] = [
-                {"content": vuln_base64d, "filename": "vulnerabilities.json"}
-            ]
+    def __wait_for_model(self, model_tag: str) -> Union[Dict[str, Any], str]:
+        while True:
+            try:
+                return self._post("get_model", {"mtag": model_tag})
+            except StatusCodeException as e:
+                if e.status_code != 204:
+                    raise
+                time.sleep(5)
 
-        res = requests.put(url, headers=self.headers, json=data)
-        res.raise_for_status()
-        return res.json()["response"]["mtag"]
+    def __raise_model_error(self, e: StatusCodeException) -> None:
+        error_message = e.json["error"]
 
-    def build_from_config(self, json_data, vuln_data=None):
-        url = urljoin(self.backend_url, "build_from_config")
+        # Credentials error 1
+        expected_error_messages = [
+            "Provided credentials were not accepted by AWS",
+            "Your credentials does not give you the required access",
+            "You don't have permission to perform a required action, please review the IAM policy",
+        ]
+        if error_message in expected_error_messages:
+            raise AwsCredentialsError(error_message)
 
-        model_content = self.encode_data(json_data)
-        model_base64d = base64.b64encode(model_content).decode("utf-8")
+        # Credentials error 2
+        expected_prefix = "You don't have permission to perform the required action: "
+        expected_suffix = ", please review the IAM policy"
+        if error_message.startswith(expected_prefix) and error_message.endswith(
+            expected_suffix
+        ):
+            raise AwsCredentialsError(error_message)
 
-        data = {"files": [{"content": model_base64d, "filename": "apimodel.json"}]}
+        # Region error
+        region_error = (
+            "Error in retrieving or parsing info from AWS: No valid AWS region found"
+        )
+        if error_message == region_error:
+            raise AwsRegionError(error_message)
 
-        if vuln_data:
-            vuln_content = self.encode_data(vuln_data)
-            vuln_base64d = base64.b64encode(vuln_content).decode("utf-8")
-            data["additionalFiles"] = [
-                {"content": vuln_base64d, "filename": "vulnerabilities.json"}
-            ]
+        # pylint: disable=misplaced-bare-raise
+        raise
 
-        res = requests.put(url, headers=self.headers, json=data)
-        res.raise_for_status()
-        return res.json()["response"]["mtag"]
+    def set_high_value_assets(
+        self,
+        model: Model,
+        instances: Optional[List[str]] = None,
+        dbinstances: Optional[List[str]] = None,
+        buckets: Optional[List[str]] = None,
+        dynamodb_tables: Optional[List[str]] = None,
+    ) -> None:
+        high_value_assets = []
 
-    def model_request(self, model_tag):
-        url = urljoin(self.backend_url, "get_model")
-        data = {"mtag": model_tag}
-        res = requests.post(url, headers=self.headers, json=data)
-        res.raise_for_status()
-        if res.status_code == 204:
-            return res.status_code, {}
-        else:
-            return res.status_code, res.json()["response"]
+        if instances is not None:
+            for identifier in instances:
+                high_value_assets.append(
+                    {
+                        "metaconcept": "EC2Instance",
+                        "attackstep": "HighPrivilegeAccess",
+                        "id": {
+                            "type": "tag",
+                            "key": "aws-id",
+                            "value": identifier,
+                        },
+                    }
+                )
 
-    def simulate_model(self, model, profile):
-        url = urljoin(self.backend_url, "simulate")
+        if dbinstances is not None:
+            for identifier in dbinstances:
+                high_value_assets.append(
+                    {
+                        "metaconcept": "DBInstance",
+                        "attackstep": "ReadDatabase",
+                        "id": {
+                            "type": "name",
+                            "value": identifier,
+                        },
+                    }
+                )
+
+        if buckets is not None:
+            for identifier in buckets:
+                high_value_assets.append(
+                    {
+                        "metaconcept": "S3Bucket",
+                        "attackstep": "ReadObject",
+                        "id": {
+                            "type": "name",
+                            "value": identifier,
+                        },
+                    }
+                )
+
+        if dynamodb_tables is not None:
+            for identifier in dynamodb_tables:
+                high_value_assets.append(
+                    {
+                        "metaconcept": "DynamoDBTable",
+                        "attackstep": "AuthenticatedRead",
+                        "id": {
+                            "type": "name",
+                            "value": identifier,
+                        },
+                    }
+                )
+
+        model.set_high_value_assets(high_value_assets=high_value_assets)
+
+    def simulate(
+        self, model: Model, profile: "Profile", export_report: bool = False
+    ) -> Dict[str, Any]:
+        def has_high_value_asset(model: Model) -> bool:
+            for obj in model.model["objects"].values():
+                for step in obj["attacksteps"]:
+                    if step["consequence"]:
+                        return True
+            return False
+
+        if not has_high_value_asset(model):
+            raise ValueError("Model must have at least one high value asset")
+
+        try:
+            simulation_tag = self.__simulate_model(model.model, profile.value)
+        except StatusCodeException as e:
+            if e.status_code == 429:
+                raise RateLimitError(
+                    "You are currently ratelimited, please wait for other simulations to complete"
+                )
+            raise
+
+        results = self.__wait_for_results(simulation_tag)
+        parsed_results = self.__parse_results(results)
+        if export_report:
+            parsed_results["Report"] = results
+        return parsed_results
+
+    def __simulate_model(self, model: Dict[str, Any], profile: str) -> str:
         model["name"] = "vanguard_model"
         data = {"model": model, "profile": profile, "demo": False}
-        res = requests.put(url, headers=self.headers, json=data)
-        if res.status_code == 429:
-            raise RateLimitError(
-                "You are currently ratelimited, please wait for other simulations to complete"
-            )
-        res.raise_for_status()
-        return res.json()["response"]["tag"]
+        response = self._put("simulate", data)
+        return response["tag"]
 
-    def get_results(self, simulation_tag):
-        url = urljoin(self.backend_url, "results")
-        data = {"tag": simulation_tag}
-        res = requests.post(url, headers=self.headers, json=data)
-        res.raise_for_status()
-        if res.status_code == 204:
-            return res.status_code, {}
-        else:
-            return res.status_code, res.json()["response"]
+    def __wait_for_results(self, simulation_tag: str) -> Dict[str, Any]:
+        while True:
+            try:
+                return self._post("results", {"tag": simulation_tag})
+            except StatusCodeException as e:
+                if e.status_code != 204:
+                    raise
+                time.sleep(5)
 
-    def wait_for_results(self, simulation_tag):
-        results = self.wait_for_response("get_results", simulation_tag)
-        return results
+    def __parse_results(self, results: Dict[str, Any]) -> Dict[str, Any]:
+        def get_key(data: Dict[str, Any]) -> str:
+            object_id = int(data["object_id"])
+            for obj in model["objects"].values():
+                if obj["eid"] == object_id:
+                    if "aws-id" in obj["tags"] and obj["tags"]["aws-id"]:
+                        return str(obj["tags"]["aws-id"])
+                    if obj["name"]:
+                        return str(obj["name"])
+                    if "Name" in obj["tags"] and obj["tags"]["Name"]:
+                        return str(obj["tags"]["Name"])
+                    return str(obj["eid"])
+            return str(object_id)
 
-    def wait_for_model(self, model_tag):
-        return self.wait_for_response("model_request", model_tag)
+        model = results["model_data"]
+        parsed_results: Dict[str, Any] = {}
+        for data in results["results"]["data"].values():
+            metaconcept = data["metaconcept"]
+            attackstep = data["attackstep"]
+            object_name = data["object_name"]
+            consequence = int(data["consequence"])
+            probability = float(data["probability"])
+            ttc50 = float(data["ttc50"])
+            if ttc50 == sys.float_info.max:
+                ttc50 = math.inf
+            else:
+                ttc50 = int(ttc50)
 
-    def parse_results(self, results, model):
-        formatted_results = {}
-        for key, data in results["data"].items():
-            hv_asset = model.result_map[key]
-            result = self.format_result(data)
-            hv_asset.update(result)
-            hv_asset["id"] = hv_asset["id"]["value"]
-            if hv_asset["metaconcept"] not in formatted_results:
-                formatted_results[hv_asset["metaconcept"]] = {}
-            formatted_results[hv_asset["metaconcept"]][hv_asset["id"]] = hv_asset
-        return formatted_results
+            result = {
+                "metaconcept": metaconcept,
+                "attackstep": attackstep,
+                "name": object_name,
+                "consequence": consequence,
+                "probability": probability,
+                "ttc": ttc50,
+            }
 
-    def format_result(self, data):
-        ttc50 = float(data["ttc50"])
-        if ttc50 == sys.float_info.max:
-            ttc50 = math.inf
-        else:
-            ttc50 = int(ttc50)
-        prob = int(float(data["probability"]) * 100)
-        result = {
-            "probability": float(data["probability"]),
-            "ttc": ttc50,
-            "name": data["object_name"],
-        }
-        return result
-
-    def wait_for_response(self, function, *args):
-        status = 204
-        while status == 204:
-            time.sleep(5)
-            status, data = getattr(self, function)(*args)
-            if status == 200:
-                return data
-
-    def _get_index_html(self):
-        url = urljoin(self.base_url, "index.html")
-        res = requests.get(url)
-        res.raise_for_status()
-        return res.text
-
-    def _get_bundle_name(self):
-        index_html = self._get_index_html()
-        soup = BeautifulSoup(index_html, "html.parser")
-        pattern = re.compile(r"/main\.[0-9a-f]+\.js")
-        for tag in soup.find_all("script"):
-            if "src" not in tag.attrs:
-                continue
-            if pattern.fullmatch(tag["src"]) or tag["src"] == "/bundle.js":
-                return tag["src"]
-        raise EnvironmentError("Failed to get bundle name")
-
-    def _get_bundle(self):
-        bundle_name = self._get_bundle_name()
-        url = urljoin(self.base_url, bundle_name)
-        res = requests.get(url)
-        res.raise_for_status()
-        return res.text
-
-    def cognito_params(self, region):
-        bundle = self._get_bundle()
-        pattern = fr"{{\s*UserPoolId:\s*['\"]({region}[^'\"]+)['\"],\s*ClientId:\s*['\"]([^'\"]+)['\"]\s*}}"
-        match = re.search(pattern, bundle)
-        if match:
-            userpool_id = str(match.group(1))
-            client_id = str(match.group(2))
-            return client_id, userpool_id
-        raise EnvironmentError("Failed to get cognito parameters")
+            if metaconcept not in parsed_results:
+                parsed_results[metaconcept] = {}
+            parsed_results[metaconcept][get_key(data)] = result
+        return parsed_results

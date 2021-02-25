@@ -4,3 +4,7 @@ include NOTICE
 include README.md
 include requirements.in
 include requirements.txt
+include dev-requirements.in
+include dev-requirements.txt
+include pyproject.toml
+include mypy.ini
