@@ -6,11 +6,11 @@
 #
 beautifulsoup4==4.9.3
     # via -r requirements.in
-boto3==1.17.15
+boto3==1.17.46
     # via
     #   -r requirements.in
     #   pycognito
-botocore==1.20.15
+botocore==1.20.46
     # via
     #   -r requirements.in
     #   boto3
@@ -21,7 +21,7 @@ cffi==1.14.5
     # via cryptography
 chardet==4.0.0
     # via requests
-cryptography==3.4.6
+cryptography==3.4.7
     # via python-jose
 ecdsa==0.14.1
     # via python-jose
@@ -37,7 +37,7 @@ pyasn1==0.4.8
     # via
     #   python-jose
     #   rsa
-pycognito==2021.2.0
+pycognito==2021.3.1
     # via -r requirements.in
 pycparser==2.20
     # via cffi
@@ -51,7 +51,7 @@ requests==2.25.1
     #   pycognito
 rsa==4.7.2
     # via python-jose
-s3transfer==0.3.4
+s3transfer==0.3.6
     # via boto3
 securicad-model==0.0.1
     # via -r requirements.in
@@ -60,9 +60,9 @@ six==1.15.0
     #   ecdsa
     #   python-dateutil
     #   python-jose
-soupsieve==2.2
+soupsieve==2.2.1
     # via beautifulsoup4
-urllib3==1.26.3
+urllib3==1.26.4
     # via
     #   botocore
     #   requests
