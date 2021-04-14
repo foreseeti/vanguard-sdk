@@ -263,27 +263,13 @@ class Client:
     def __raise_model_error(self, e: StatusCodeException) -> None:
         error_message = e.json["error"]
 
-        # Credentials error 1
-        expected_error_messages = [
-            "Provided credentials were not accepted by AWS",
-            "Your credentials does not give you the required access",
-            "You don't have permission to perform a required action, please review the IAM policy",
-        ]
-        if error_message in expected_error_messages:
-            raise AwsCredentialsError(error_message)
-
-        # Credentials error 2
-        expected_prefix = "You don't have permission to perform the required action: "
-        expected_suffix = ", please review the IAM policy"
-        if error_message.startswith(expected_prefix) and error_message.endswith(
-            expected_suffix
-        ):
+        # Credentials error
+        credentials_error = "No valid AWS credentials found"
+        if error_message == credentials_error:
             raise AwsCredentialsError(error_message)
 
         # Region error
-        region_error = (
-            "Error in retrieving or parsing info from AWS: No valid AWS region found"
-        )
+        region_error = "No valid AWS Region found"
         if error_message == region_error:
             raise AwsRegionError(error_message)
 
