@@ -8,11 +8,11 @@ appdirs==1.4.4
     # via black
 astroid==2.5.6
     # via pylint
-black==21.4b2
+black==21.5b2
     # via -r dev-requirements.in
 bleach==3.3.0
     # via readme-renderer
-certifi==2020.12.5
+certifi==2021.5.30
     # via
     #   -c requirements.txt
     #   requests
@@ -24,7 +24,7 @@ chardet==4.0.0
     # via
     #   -c requirements.txt
     #   requests
-click==7.1.2
+click==8.0.1
     # via black
 colorama==0.4.4
     # via twine
@@ -38,7 +38,7 @@ idna==2.10
     # via
     #   -c requirements.txt
     #   requests
-importlib-metadata==4.0.1
+importlib-metadata==4.4.0
     # via
     #   keyring
     #   twine
@@ -72,9 +72,9 @@ pycparser==2.20
     # via
     #   -c requirements.txt
     #   cffi
-pygments==2.8.1
+pygments==2.9.0
     # via readme-renderer
-pylint==2.8.2
+pylint==2.8.3
     # via -r dev-requirements.in
 pyparsing==2.4.7
     # via packaging
@@ -89,11 +89,11 @@ requests==2.25.1
     #   -c requirements.txt
     #   requests-toolbelt
     #   twine
-rfc3986==1.4.0
+rfc3986==1.5.0
     # via twine
 secretstorage==3.3.1
     # via keyring
-six==1.15.0
+six==1.16.0
     # via
     #   -c requirements.txt
     #   bleach
@@ -102,15 +102,15 @@ toml==0.10.2
     # via
     #   black
     #   pylint
-tqdm==4.60.0
+tqdm==4.61.0
     # via twine
 twine==3.4.1
     # via -r dev-requirements.in
 typed-ast==1.4.3
     # via mypy
-typing-extensions==3.7.4.3
+typing-extensions==3.10.0.0
     # via mypy
-urllib3==1.26.4
+urllib3==1.26.5
     # via
     #   -c requirements.txt
     #   requests
