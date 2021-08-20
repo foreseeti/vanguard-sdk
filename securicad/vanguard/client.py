@@ -18,7 +18,7 @@ import math
 import re
 import sys
 import time
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 from urllib.parse import urljoin
 
 import boto3
@@ -26,7 +26,8 @@ import botocore
 import requests
 from botocore.config import Config
 from bs4 import BeautifulSoup
-from pycognito.aws_srp import AWSSRP
+from bs4.element import Tag
+from pycognito.aws_srp import AWSSRP  # type: ignore
 from securicad.model import Model
 
 from securicad.vanguard.exceptions import (
@@ -128,10 +129,15 @@ class Client:
             soup = BeautifulSoup(index_html, "html.parser")
             pattern = re.compile(r"/main\.[0-9a-f]+\.js")
             for tag in soup.find_all("script"):
+                if not isinstance(tag, Tag):
+                    continue
                 if "src" not in tag.attrs:
                     continue
-                if pattern.fullmatch(tag["src"]) or tag["src"] == "/bundle.js":
-                    return tag["src"]
+                if (
+                    pattern.fullmatch(tag.attrs["src"])
+                    or tag.attrs["src"] == "/bundle.js"
+                ):
+                    return tag.attrs["src"]
             raise EnvironmentError("Failed to get bundle name")
 
         def get_index_html() -> str:
@@ -251,7 +257,7 @@ class Client:
         response = self._put("build_from_role", data, 202)
         return response["mtag"]
 
-    def __wait_for_model(self, model_tag: str) -> Union[Dict[str, Any], str]:
+    def __wait_for_model(self, model_tag: str) -> Dict[str, Any]:
         while True:
             try:
                 return self._post("get_model", {"mtag": model_tag})

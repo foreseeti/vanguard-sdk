@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [tool.isort]
 profile = "black"
 py_version = "38"
@@ -5,9 +9,17 @@ py_version = "38"
 [tool.black]
 target-version = ["py38"]
 
+[tool.mypy]
+python_version = "3.8"
+
 [tool.pylint.messages_control]
-# https://black.readthedocs.io/en/stable/compatible_configs.html#pylint
-disable = "C0330, C0326"
+# C0330, C0326: https://black.readthedocs.io/en/stable/guides/using_black_with_other_tools.html#pylint
+# C0114: missing-module-docstring
+# C0115: missing-class-docstring
+# C0116: missing-function-docstring
+# C0301: line-too-long
+# R0913: too-many-arguments
+disable = "C0330, C0326, C0114, C0115, C0116, C0301, R0913"
 
 [tool.pylint.format]
 max-line-length = "88"

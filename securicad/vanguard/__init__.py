@@ -18,7 +18,6 @@ from enum import Enum
 from securicad.vanguard.client import Client
 
 __version__ = "0.1.1"
-__author__ = "Foreseeti AB"
 
 
 class Profile(Enum):
